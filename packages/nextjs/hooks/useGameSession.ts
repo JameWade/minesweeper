@@ -1,18 +1,10 @@
 import { useCallback, useState, useEffect } from "react";
 import { parseEther } from "viem";
 import { useAccount } from "wagmi";
+import { SessionState } from "~~/components/minesweeper/types";
 import { useScaffoldEventHistory, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 import { ethers } from "ethers";
-
-export interface SessionState {
-  isActive: boolean;
-  expiryTime: number;
-  nonce: string;
-  lastHash: string;
-  remainingGas: number;
-  stake: bigint;
-}
 
 export const useGameSession = () => {
   const [sessionState, setSessionState] = useState<SessionState>({
@@ -38,6 +30,11 @@ export const useGameSession = () => {
   });
 
   const createSession = useCallback(async () => {
+    if (!address) {
+      notification.error("Please connect your wallet");
+      return;
+    }
+
     try {
       await writeContractAsync({
         functionName: "createSession",

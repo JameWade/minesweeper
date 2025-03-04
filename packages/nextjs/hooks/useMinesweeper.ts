@@ -13,7 +13,7 @@ export const useMinesweeper = () => {
     startNewGame,
     handleCellClick,
     processPendingMoves,
-  } = useGameBoard({ sessionState });
+  } = useGameBoard({ sessionState, setSessionState });
 
   // 自动处理待处理的移动
   useEffect(() => {
@@ -33,7 +33,17 @@ export const useMinesweeper = () => {
     handleCellClick,
     handleCellRightClick: (e: React.MouseEvent, x: number, y: number) => {
       e.preventDefault();
-      // Handle right click (flagging) if needed
+      setGameState(prev => {
+        const newBoard = [...prev.board];
+        newBoard[y][x] = {
+          ...newBoard[y][x],
+          isFlagged: !newBoard[y][x].isFlagged
+        };
+        return {
+          ...prev,
+          board: newBoard
+        };
+      });
     },
     processPendingMoves,
   };

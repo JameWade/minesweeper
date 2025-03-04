@@ -12,8 +12,12 @@ export interface GameState {
   hasWon: boolean;
   startTime: number;
   stateHash: string;
-  score?: number;
-  timeSpent?: number;
+  score: number;
+}
+
+export interface Move {
+  x: number;
+  y: number;
 }
 
 export interface SessionState {
@@ -23,9 +27,4 @@ export interface SessionState {
   lastHash: string;
   remainingGas: number;
   stake: bigint;
-}
-
-export interface Move {
-  x: number;
-  y: number;
 }

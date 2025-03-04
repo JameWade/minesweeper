@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     Minesweeper: {
-      address: "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
+      address: "0xcbEAF3BDe82155F56486Fb5a1072cb8baAf547cc",
       abi: [
         {
           inputs: [],
@@ -360,6 +360,50 @@ const deployedContracts = {
             {
               internalType: "uint256",
               name: "moveCount",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "address",
+              name: "player",
+              type: "address",
+            },
+          ],
+          name: "getSession",
+          outputs: [
+            {
+              internalType: "address",
+              name: "sessionPlayer",
+              type: "address",
+            },
+            {
+              internalType: "uint256",
+              name: "expiryTime",
+              type: "uint256",
+            },
+            {
+              internalType: "bytes32",
+              name: "nonce",
+              type: "bytes32",
+            },
+            {
+              internalType: "bytes32",
+              name: "lastHash",
+              type: "bytes32",
+            },
+            {
+              internalType: "uint256",
+              name: "lastActionTime",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
+              name: "remainingGas",
               type: "uint256",
             },
           ],
