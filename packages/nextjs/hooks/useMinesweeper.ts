@@ -12,6 +12,7 @@ export const useMinesweeper = () => {
     isProcessingMoves,
     startNewGame,
     handleCellClick,
+    handleCellRightClick,
     processPendingMoves,
   } = useGameBoard({ sessionState, setSessionState });
 
@@ -31,20 +32,7 @@ export const useMinesweeper = () => {
     createSession,
     startNewGame,
     handleCellClick,
-    handleCellRightClick: (e: React.MouseEvent, x: number, y: number) => {
-      e.preventDefault();
-      setGameState(prev => {
-        const newBoard = [...prev.board];
-        newBoard[y][x] = {
-          ...newBoard[y][x],
-          isFlagged: !newBoard[y][x].isFlagged
-        };
-        return {
-          ...prev,
-          board: newBoard
-        };
-      });
-    },
+    handleCellRightClick,
     processPendingMoves,
   };
 };

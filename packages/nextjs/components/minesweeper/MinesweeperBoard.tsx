@@ -1,12 +1,12 @@
 import { Cell } from "./types";
 
-interface Props {
+interface MinesweeperBoardProps {
   board: Cell[][];
   onCellClick: (x: number, y: number) => void;
-  onCellRightClick: (e: React.MouseEvent, x: number, y: number) => void;
+  onCellRightClick: (x: number, y: number) => void;
 }
 
-export const MinesweeperBoard = ({ board, onCellClick, onCellRightClick }: Props) => {
+export const MinesweeperBoard = ({ board, onCellClick, onCellRightClick }: MinesweeperBoardProps) => {
   const getCellContent = (cell: Cell) => {
     if (!cell.isRevealed) {
       return cell.isFlagged ? "🚩" : "";
@@ -52,7 +52,11 @@ export const MinesweeperBoard = ({ board, onCellClick, onCellRightClick }: Props
                 hover:opacity-80
               `}
               onClick={() => onCellClick(x, y)}
-              onContextMenu={e => onCellRightClick(e, x, y)}
+              onContextMenu={e => {
+                e.preventDefault();
+                console.log("Context menu event triggered");
+                onCellRightClick(x, y);
+              }}
               disabled={cell.isRevealed}
             >
               {getCellContent(cell)}

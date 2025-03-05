@@ -111,9 +111,32 @@ export const useGameBoard = ({
         notification.error("Please create a session first");
         return;
       }
+      if (gameState.board[y][x].isFlagged) {
+        return;
+      }
       setPendingMoves(prev => [...prev, { x, y }]);
     },
-    [sessionState.isActive],
+    [sessionState.isActive, gameState.board],
+  );
+
+  const handleCellRightClick = useCallback(
+    (x: number, y: number) => {
+      if (gameState.board[y][x].isRevealed) {
+        return;
+      }
+      setGameState(prev => {
+        const newBoard = prev.board.map(row => [...row]);
+        newBoard[y][x] = {
+          ...newBoard[y][x],
+          isFlagged: !newBoard[y][x].isFlagged,
+        };
+        return {
+          ...prev,
+          board: newBoard,
+        };
+      });
+    },
+    [gameState.board],
   );
 
   // 移动处理相关函数
@@ -148,8 +171,6 @@ export const useGameBoard = ({
       ),
     );
 
-    console.log("messageHash data:", [address, xCoords, yCoords, nonce, lastHash]);
-    console.log("messageHash:", messageHash);
     // 使用 personal_sign
     const signature = await walletClient.signMessage({
       account: walletClient.account,
@@ -176,7 +197,6 @@ export const useGameBoard = ({
         args: [formattedMoves, signature],
       });
 
-      console.log("Transaction response:", tx);
       return tx;
     } catch (error) {
       console.error("Transaction error details:", error);
@@ -216,7 +236,6 @@ export const useGameBoard = ({
 
       // 5. 发送交易
       const tx = await sendMovesTransaction(moves, signature);
-      console.log("Transaction sent:", tx);
 
       // 6. 更新待处理移动
       setPendingMoves(prev => prev.slice(moves.length));
@@ -232,7 +251,6 @@ export const useGameBoard = ({
   const isMine = (boardHash: string, x: number, y: number): boolean => {
     const positionHash = ethers.solidityPackedKeccak256(["bytes32", "uint8", "uint8"], [boardHash, x, y]);
 
-    console.log("positionHash:", positionHash);
     const hashValue = BigInt(positionHash);
     const maxMinePositions = BigInt(16 * 16);
 
@@ -291,7 +309,8 @@ export const useGameBoard = ({
     (event: any) => {
       if (!event?.args) return;
 
-      const { player, x, y, adjacentMines } = event.args;
+      const { player, x, y, adjacentMines, stateHash } = event.args;
+      
       if (player.toLowerCase() === address?.toLowerCase()) {
         setGameState(prev => {
           const newBoard = [...prev.board];
@@ -311,6 +330,24 @@ export const useGameBoard = ({
     [address],
   );
 
+  const handleGameOver = useCallback(
+    (event: any) => {
+      if (!event?.args) return;
+
+      const { player, won, score, timeSpent } = event.args;
+      if (player.toLowerCase() === address?.toLowerCase()) {
+        console.log("Game Over:", { won, score, timeSpent });
+        setGameState(prev => ({
+          ...prev,
+          isOver: true,
+          hasWon: won,
+          score: Number(score),
+        }));
+      }
+    },
+    [address],
+  );
+
   // 事件监听效果
   useEffect(() => {
     if (gameStartEvents?.[0]?.args) {
@@ -319,8 +356,15 @@ export const useGameBoard = ({
   }, [gameStartEvents, handleGameStart]);
 
   useEffect(() => {
+    console.log("Received CellRevealed events:", cellRevealedEvents);
     cellRevealedEvents?.forEach(handleCellRevealed);
   }, [cellRevealedEvents, handleCellRevealed]);
+
+  useEffect(() => {
+    if (gameOverEvents?.[0]?.args) {
+      handleGameOver(gameOverEvents[0]);
+    }
+  }, [gameOverEvents, handleGameOver]);
 
   return {
     gameState,
@@ -329,6 +373,7 @@ export const useGameBoard = ({
     isProcessingMoves,
     startNewGame,
     handleCellClick,
+    handleCellRightClick,
     processPendingMoves,
   };
 };

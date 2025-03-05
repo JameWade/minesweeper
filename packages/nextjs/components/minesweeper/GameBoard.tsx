@@ -8,7 +8,7 @@ interface GameBoardProps {
   pendingMoves: { x: number; y: number }[];
   isProcessingMoves: boolean;
   onCellClick: (x: number, y: number) => void;
-  onCellRightClick: (e: React.MouseEvent, x: number, y: number) => void;
+  onCellRightClick: (x: number, y: number) => void;
   onProcessMoves: () => void;
   startNewGame: (salt: string) => void;
 }

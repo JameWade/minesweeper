@@ -94,7 +94,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
     // 开始新游戏
     function startNewGame(bytes32 salt) external whenNotPaused {
-        require(!games[msg.sender].isOver, "Finish current game first");
         require(sessions[msg.sender].expiryTime > block.timestamp, "Session expired");
 
         bytes32 boardHash = MinesweeperUtils.generateBoard(salt);
@@ -165,17 +164,8 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         require(!game.isOver, "Game is over");
         require(x < WIDTH && y < HEIGHT, "Invalid coordinates");
 
-        // 确保 moveCount 不会溢出
-        require(game.moveCount < type(uint256).max, "Move count overflow");
-
-        uint256 bitIndex = uint256(y) * WIDTH + uint256(x);
-        require(bitIndex < 256, "Bit index overflow");
-
-        bool isEmptyCell = _revealCell(game, x, y);
-        // 只有当是空白格子（没有相邻地雷）时才展开
-        if (isEmptyCell) {
-            _revealArea(game, x, y);
-        }
+        // 直接调用 _revealArea，让它处理揭示和递归
+        _revealArea(game, x, y);
 
         if (_checkWin(game)) {
             game.isOver = true;
@@ -202,7 +192,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             unchecked {
                 game.stateHash = keccak256(abi.encode(game.revealedMask, game.moveCount));
             }
-
             emit CellRevealed(msg.sender, x, y, adjacentMines, game.stateHash, game.moveCount);
 
             return adjacentMines == 0;
@@ -213,7 +202,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         }
     }
 
-    // 内部函数：检查是否胜利
     function _checkWin(Game storage game) internal view returns (bool) {
         uint256 revealedCount = 0;
 
@@ -231,15 +219,23 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
     function _revealArea(Game storage game, uint8 x, uint8 y) internal {
         uint256 bitIndex = uint256(y) * WIDTH + uint256(x);
+        console.log("_revealArea called for x: %s, y: %s", x, y);
+        
         if ((game.revealedMask & (1 << bitIndex)) != 0) {
+            console.log("Cell already revealed, returning. x: %s, y: %s", x, y);
             return;
         }
 
         // 揭示当前格子，如果不是空白格子，直接返回
-        if (!_revealCell(game, x, y)) {
+        bool isEmpty = _revealCell(game, x, y);
+        console.log("_revealCell result for x: %s, y: %s, isEmpty: %s", x, y, isEmpty);
+        
+        if (!isEmpty) {
+            console.log("Not an empty cell, stopping recursion. x: %s, y: %s", x, y);
             return;
         }
 
+        console.log("Starting to check adjacent cells for x: %s, y: %s", x, y);
         // 直接检查相邻格子
         for (int8 i = -1; i <= 1; i++) {
             for (int8 j = -1; j <= 1; j++) {
@@ -255,7 +251,8 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
                 uint8 newX = i < 0 ? x - uint8(-i) : x + uint8(i);
                 uint8 newY = j < 0 ? y - uint8(-j) : y + uint8(j);
-
+                
+                console.log("Recursing to adjacent cell x: %s, y: %s", newX, newY);
                 _revealArea(game, newX, newY);
             }
         }
@@ -301,3 +298,4 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         );
     }
 }
+
