@@ -2,9 +2,25 @@ import { SessionState } from "~~/components/minesweeper/types";
 
 interface GameStatusProps {
   sessionState: SessionState;
+  onCreateSession?: () => void;
 }
 
-export const GameStatus = ({ sessionState }: GameStatusProps) => {
+export const GameStatus = ({ sessionState, onCreateSession }: GameStatusProps) => {
+  const isExpired = sessionState.expiryTime < Date.now() / 1000;
+
+  if (isExpired) {
+    return (
+      <div className="alert alert-warning">
+        <span>Session Expired!</span>
+        {onCreateSession && (
+          <button className="btn btn-primary" onClick={onCreateSession}>
+            Create New Session (1 ETH)
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="stats shadow">
       <div className="stat">

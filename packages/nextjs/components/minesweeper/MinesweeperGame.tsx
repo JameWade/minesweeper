@@ -24,7 +24,9 @@ export const MinesweeperGame = () => {
     }
   }, [pendingMoves, isProcessingMoves, processPendingMoves]);
 
-  if (!sessionState.isActive) {
+  const isSessionExpired = sessionState.expiryTime < Date.now() / 1000;
+
+  if (!sessionState.isActive || isSessionExpired) {
     return (
       <button className="btn btn-primary" onClick={createSession}>
         Create Session (1 ETH)
@@ -34,11 +36,16 @@ export const MinesweeperGame = () => {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <GameStatus sessionState={sessionState} />
+      <GameStatus sessionState={sessionState} onCreateSession={createSession} />
       {!gameState.stateHash ? (
-        <button className="btn btn-primary" onClick={() => startNewGame(getRandomBytes())}>
-          Start Game
-        </button>
+        <div className="flex flex-col items-center gap-4">
+          <div className="alert alert-info">
+            <span>Start a new game to begin playing!</span>
+          </div>
+          <button className="btn btn-primary" onClick={() => startNewGame(getRandomBytes())}>
+            Start Game
+          </button>
+        </div>
       ) : (
         <GameBoard
           gameState={gameState}

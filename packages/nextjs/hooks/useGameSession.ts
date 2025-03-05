@@ -62,6 +62,20 @@ export const useGameSession = () => {
     }
   }, [sessionEvents, address]);
 
+  useEffect(() => {
+    const checkExpiry = () => {
+      if (sessionState.isActive && sessionState.expiryTime < Date.now() / 1000) {
+        setSessionState(prev => ({
+          ...prev,
+          isActive: false
+        }));
+      }
+    };
+
+    const interval = setInterval(checkExpiry, 1000);
+    return () => clearInterval(interval);
+  }, [sessionState.expiryTime, sessionState.isActive]);
+
   return {
     sessionState,
     setSessionState,
