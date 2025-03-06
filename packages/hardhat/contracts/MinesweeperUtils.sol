@@ -80,7 +80,16 @@ library MinesweeperUtils {
         }
     }
 
-    
-
-
+    // 计算地雷总数
+    function countMines(bytes32 boardHash) internal pure returns (uint8) {
+        uint8 count = 0;
+        for (uint8 x = 0; x < WIDTH; x++) {
+            for (uint8 y = 0; y < HEIGHT; y++) {
+                if (isMine(boardHash, x, y)) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
 }

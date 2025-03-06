@@ -24,6 +24,7 @@ const INITIAL_BOARD_STATE: GameState = {
   startTime: 0,
   stateHash: "",
   score: 0,
+  mineCount: 0 
 };
 
 export const useGameBoard = ({
@@ -248,10 +249,8 @@ export const useGameBoard = ({
     (event: any) => {
       if (!event?.args) return;
 
-      const { player, boardHash, timestamp } = event.args;
+      const { player, boardHash, mineCount, timestamp } = event.args;
       if (player.toLowerCase() === address?.toLowerCase()) {
-        // 设置游戏开始区块号
-
         setGameStartBlock(event.blockNumber);
         const newBoard = Array(16)
           .fill(null)
@@ -286,6 +285,7 @@ export const useGameBoard = ({
           board: newBoard,
           startTime: Number(timestamp),
           stateHash: boardHash,
+          mineCount: mineCount,  // 保存地雷数量
         });
       }
     },
@@ -371,12 +371,12 @@ export const useGameBoard = ({
 
   // 监听 session 状态变化
   useEffect(() => {
-    // 当 session 不活跃或过期时，重置游戏状态
-    if (!sessionState.isActive || sessionState.expiryTime < Date.now() / 1000) {
+    // 只在 session 过期时重置游戏状态
+    if (sessionState.expiryTime < Date.now() / 1000) {
       setGameState(INITIAL_BOARD_STATE);
       setPendingMoves([]);
     }
-  }, [sessionState.isActive, sessionState.expiryTime]);
+  }, [sessionState.expiryTime]);
 
   return {
     gameState,

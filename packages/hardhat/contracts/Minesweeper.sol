@@ -19,7 +19,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     // 游戏配置
     uint8 public constant WIDTH = 16;
     uint8 public constant HEIGHT = 16;
-    uint8 public constant MINE_COUNT = 40;
     uint256 public constant SESSION_DURATION = 1 hours;
     uint256 public constant MAX_GAS_PER_TX = 500000;
 
@@ -31,6 +30,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         uint256 score;
         bytes32 stateHash;
         uint256 moveCount;
+        uint8 mineCount; 
     }
 
     struct Session {
@@ -39,7 +39,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         bytes32 nonce;
         bytes32 lastHash;
         uint256 lastActionTime;
-        uint256 remainingGas;
+        uint256 stake;  
     }
 
     // 存储
@@ -53,7 +53,12 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     mapping(address => bool) public isPlayer;  // 用于快速检查是否已是玩家
 
     // 事件
-    event GameStarted(address indexed player, bytes32 boardHash, uint256 timestamp);
+    event GameStarted(
+        address indexed player,
+        bytes32 boardHash,
+        uint8 mineCount, 
+        uint256 timestamp
+    );
     event CellRevealed(
         address indexed player,
         uint8 x,
@@ -81,9 +86,9 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     // 创建游戏会话
     function createSession() external payable whenNotPaused {
         require(msg.value >= 0.01 ether, "Insufficient payment");
-
+        
         bytes32 nonce = keccak256(abi.encodePacked(msg.sender, block.timestamp, block.number, block.prevrandao));
-
+        
         unchecked {
             sessions[msg.sender] = Session({
                 player: msg.sender,
@@ -91,10 +96,10 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
                 nonce: nonce,
                 lastHash: keccak256(abi.encodePacked(nonce)),
                 lastActionTime: block.timestamp,
-                remainingGas: msg.value / tx.gasprice
+                stake: msg.value  // 存储质押的 ETH 金额
             });
         }
-
+        
         emit SessionCreated(msg.sender, block.timestamp + SESSION_DURATION, nonce);
     }
 
@@ -103,9 +108,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         require(sessions[msg.sender].expiryTime > block.timestamp, "Session expired");
 
         bytes32 boardHash = MinesweeperUtils.generateBoard(salt);
-        
-        // 初始化状态哈希
-        bytes32 initialStateHash = keccak256(abi.encode(boardHash, games[msg.sender].revealedMask));
+        uint8 mineCount = MinesweeperUtils.countMines(boardHash);  // 计算地雷数量
 
         games[msg.sender] = Game({
             boardHash: boardHash,
@@ -113,19 +116,20 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             startTime: block.timestamp,
             isOver: false,
             score: 0,
-            stateHash: initialStateHash,
-            moveCount: 0
+            stateHash: boardHash,
+            moveCount: 0,
+            mineCount: mineCount  // 保存地雷数量
         });
-        emit GameStarted(msg.sender, boardHash, block.timestamp);
+
+        emit GameStarted(msg.sender, boardHash, mineCount, block.timestamp);
     }
 
     function processBatchMoves(Move[] calldata moves, bytes memory signature) external whenNotPaused nonReentrant {
         Session storage session = sessions[msg.sender];
         require(block.timestamp < session.expiryTime, "Session expired");
-        require(session.remainingGas >= MAX_GAS_PER_TX, "Insufficient gas");
         require(moves.length > 0, "No moves provided");
         require(moves.length <= 20, "Batch too large");
-
+        
         uint256 gasStart = gasleft();
 
         uint8[] memory xCoords = new uint8[](moves.length);
@@ -152,7 +156,10 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         }
 
         uint256 gasUsed = gasStart - gasleft();
-        session.remainingGas -= gasUsed;
+        uint256 gasCost = tx.gasprice * gasUsed;  // 计算这次操作需要花费的 ETH
+        require(session.stake >= gasCost, "Insufficient stake");  // 检查质押余额是否足够支付
+        session.stake -= gasCost;  // 从质押金额中扣除
+        
         session.lastHash = messageHash;
         session.lastActionTime = block.timestamp;
 
@@ -217,7 +224,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
     function _checkWin(Game storage game) internal view returns (bool) {
         uint256 revealedCount = 0;
-
         uint256 mask = game.revealedMask;
         while (mask != 0) {
             if ((mask & 1) != 0) {
@@ -226,7 +232,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             mask = mask >> 1;
         }
         uint256 area = uint256(WIDTH) * uint256(HEIGHT);
-        uint256 targetCount = area - MINE_COUNT;
+        uint256 targetCount = area - game.mineCount;  
         return revealedCount == targetCount;
     }
 
@@ -299,7 +305,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         bytes32 nonce,
         bytes32 lastHash,
         uint256 lastActionTime,
-        uint256 remainingGas
+        uint256 stake
     ) {
         Session storage session = sessions[player];
         return (
@@ -308,7 +314,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             session.nonce,
             session.lastHash,
             session.lastActionTime,
-            session.remainingGas
+            session.stake
         );
     }
 
@@ -316,10 +322,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         Session storage session = sessions[msg.sender];
         require(session.expiryTime > 0, "No active session");
         
-        // 确保合约有足够的 ETH
-        uint256 timeLeft = session.expiryTime > block.timestamp ? 
-            session.expiryTime - block.timestamp : 0;
-        uint256 refundAmount = (0.01 ether * timeLeft) / SESSION_DURATION;
+        uint256 refundAmount = session.stake;  // 直接退还剩余的质押金额
         require(address(this).balance >= refundAmount, "Insufficient contract balance");
         
         // 先删除 session 再转账，防止重入攻击

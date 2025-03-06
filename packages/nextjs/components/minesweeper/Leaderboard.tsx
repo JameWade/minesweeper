@@ -1,4 +1,8 @@
-import { LeaderboardEntry } from './types';
+
+interface LeaderboardEntry {
+  address: string;
+  score: number;
+}
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
@@ -6,28 +10,23 @@ interface LeaderboardProps {
 
 export const Leaderboard = ({ entries }: LeaderboardProps) => {
   return (
-    <div className="bg-base-200 rounded-box p-4">
-      <h2 className="text-xl font-bold mb-4">Top Players</h2>
-      <div className="overflow-x-auto">
-        <table className="table w-full">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player</th>
-              <th>Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry, index) => (
-              <tr key={index}>
-                <td>{index + 1}</td>
-                <td>{entry.address.slice(0, 6)}...{entry.address.slice(-4)}</td>
-                <td>{entry.score}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="bg-base-200 p-4 rounded-lg shadow-lg">
+      <h2 className="text-xl font-bold mb-4">🏆 Leaderboard</h2>
+      {entries.length === 0 ? (
+        <div className="text-center text-gray-500">No scores yet</div>
+      ) : (
+        <div className="space-y-2">
+          {entries.map((entry, index) => (
+            <div key={entry.address} className="flex justify-between items-center p-2 bg-base-100 rounded">
+              <div className="flex items-center gap-2">
+                <span className="font-bold">{index + 1}.</span>
+                <span>{entry.address}</span>
+              </div>
+              <span className="font-mono">{entry.score}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }; 

@@ -1,35 +1,44 @@
-import { useEffect, useState } from "react";
-import { LeaderboardEntry } from "../components/minesweeper/types";
-import { useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { useCallback, useEffect, useState } from "react";
+import { useScaffoldReadContract } from "./scaffold-eth";
+
+interface LeaderboardEntry {
+  address: string;
+  score: number;
+}
 
 export const useLeaderboard = () => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
 
-  // 1. 获取所有玩家列表
+  // 获取所有玩家地址
   const { data: players } = useScaffoldReadContract({
     contractName: "Minesweeper",
     functionName: "getPlayers",
   });
 
-  // 2. 一次性获取所有玩家的分数
+  // 获取所有玩家分数
   const { data: scores } = useScaffoldReadContract({
     contractName: "Minesweeper",
     functionName: "getScores",
-    args: [players],
+    args: [players || []],
   });
 
-  useEffect(() => {
+  // 更新排行榜
+  const updateLeaderboard = useCallback(() => {
     if (!players || !scores) return;
 
-    const newEntries = players.map((player, i) => ({
-      address: player,
-      score: Number(scores[i]),
-      timestamp: Date.now(),
+    const leaderboardEntries: LeaderboardEntry[] = players.map((address, index) => ({
+      address: address as string,
+      score: Number(scores[index] || 0),
     }));
 
-    newEntries.sort((a, b) => b.score - a.score);
-    setEntries(newEntries);
+    // 按分数降序排序
+    leaderboardEntries.sort((a, b) => b.score - a.score);
+    setEntries(leaderboardEntries);
   }, [players, scores]);
 
-  return entries;
+  useEffect(() => {
+    updateLeaderboard();
+  }, [updateLeaderboard]);
+
+  return { entries };
 };

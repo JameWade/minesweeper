@@ -14,7 +14,6 @@ export const useGameSession = () => {
     expiryTime: 0,
     nonce: "0x",
     lastHash: "0x",
-    remainingGas: 0,
     stake: parseEther("0.01"),
     createdAt: 0,
   });
@@ -38,7 +37,7 @@ export const useGameSession = () => {
     args: [address],
   });
 
-  const createSession = useCallback(async () => {
+  const createSession = useCallback(async (amount: bigint) => {
     if (!address) {
       notification.error("Please connect your wallet");
       return;
@@ -47,18 +46,18 @@ export const useGameSession = () => {
     try {
       await writeContractAsync({
         functionName: "createSession",
-        value: sessionState.stake,
+        value: amount,
         gas: 500000n,
-        gasPrice: 1000000000n, // 1 gwei
+        gasPrice: 1000000000n,
       });
     } catch (error) {
       notification.error("Failed to create session");
     }
-  }, [writeContractAsync, sessionState.stake]);
+  }, [writeContractAsync, address]);
 
   useEffect(() => {
     if (contractSession) {
-      const [player, expiryTime, nonce, lastHash, lastActionTime, remainingGas] = contractSession;
+      const [player, expiryTime, nonce, lastHash, lastActionTime, stake] = contractSession;
       const now = Math.floor(Date.now() / 1000);
       
       if (Number(expiryTime) > now) {
@@ -67,20 +66,18 @@ export const useGameSession = () => {
           expiryTime: Number(expiryTime),
           nonce: nonce || "0x",
           lastHash: lastHash,
-          remainingGas: Number(remainingGas),
-          stake: parseEther("0.01"),
+          stake: BigInt(stake),
           createdAt: Number(expiryTime) - SESSION_DURATION,
         });
       } else {
-        setSessionState({
+        setSessionState(prev => ({
+          ...prev,
           isActive: false,
           expiryTime: 0,
           nonce: "0x",
           lastHash: "0x",
-          remainingGas: 0,
-          stake: parseEther("0.01"),
           createdAt: 0,
-        });
+        }));
       }
     }
   }, [contractSession]);
@@ -116,8 +113,7 @@ export const useGameSession = () => {
         expiryTime: 0,
         nonce: "0x",
         lastHash: "0x",
-        remainingGas: 0,
-        stake: parseEther("0.01"),
+        stake: sessionState.stake,
         createdAt: now,
       });
 
@@ -126,7 +122,7 @@ export const useGameSession = () => {
       console.error("Failed to close session:", error);
       notification.error("Failed to close session");
     }
-  }, [writeContractAsync, address]);
+  }, [writeContractAsync, address, sessionState.stake]);
 
   return {
     sessionState,

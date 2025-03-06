@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMinesweeper } from "~~/hooks/useMinesweeper";
 import { getRandomBytes } from "~~/utils/scaffold-eth";
 import { GameBoard } from "./GameBoard";
 import { GameStatus } from "./GameStatus";
 import { Leaderboard } from "./Leaderboard";
+import { parseEther } from "viem";
 
 export const MinesweeperGame = () => {
   const {
@@ -19,6 +20,8 @@ export const MinesweeperGame = () => {
     closeSession,
     leaderboardEntries,
   } = useMinesweeper();
+
+  const [inputAmount, setInputAmount] = useState("0.01");
 
   // 自动处理待处理的移动
   useEffect(() => {
@@ -41,16 +44,27 @@ export const MinesweeperGame = () => {
         clearTimeout(timeoutId);
       }
     };
-  }, [pendingMoves.length, isProcessingMoves, gameState.isOver, processPendingMoves]); // 注意这里使用 pendingMoves.length
+  }, [pendingMoves.length, isProcessingMoves, gameState.isOver, processPendingMoves]); 
 
   const isSessionExpired = sessionState.expiryTime < Date.now() / 1000;
   const isSessionValid = sessionState.isActive && !isSessionExpired;
 
   if (!isSessionValid) {
     return (
-      <button className="btn btn-primary" onClick={createSession}>
-        Create Session (0.01 ETH)
-      </button>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          step="0.01"
+          min="0.01"
+          value={inputAmount}
+          onChange={e => setInputAmount(e.target.value)}
+          className="input input-bordered w-24"
+        />
+        <span className="text-sm">ETH</span>
+        <button className="btn btn-primary" onClick={() => createSession(parseEther(inputAmount))}>
+          Create Session
+        </button>
+      </div>
     );
   }
 

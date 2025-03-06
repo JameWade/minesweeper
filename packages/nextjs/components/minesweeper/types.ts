@@ -13,6 +13,7 @@ export interface GameState {
   startTime: number;
   stateHash: string;
   score: number;
+  mineCount: number;
 }
 
 export interface Move {
@@ -25,7 +26,6 @@ export interface SessionState {
   expiryTime: number;
   nonce: string;
   lastHash: string;
-  remainingGas: number;
   stake: bigint;
   createdAt: number;
 }
