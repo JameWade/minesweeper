@@ -1,10 +1,12 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ethers } from "ethers";
 import { parseEther } from "viem";
 import { useAccount } from "wagmi";
 import { SessionState } from "~~/components/minesweeper/types";
-import { useScaffoldEventHistory, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldEventHistory, useScaffoldWriteContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
-import { ethers } from "ethers";
+
+const SESSION_DURATION = 60 * 60; // 1 hour in seconds, matching contract's SESSION_DURATION
 
 export const useGameSession = () => {
   const [sessionState, setSessionState] = useState<SessionState>({
@@ -13,7 +15,8 @@ export const useGameSession = () => {
     nonce: "0x",
     lastHash: "0x",
     remainingGas: 0,
-    stake: parseEther("1"),
+    stake: parseEther("0.01"),
+    createdAt: 0,
   });
 
   const { address } = useAccount();
@@ -27,6 +30,12 @@ export const useGameSession = () => {
     fromBlock: 0n,
     filters: { player: address },
     watch: true,
+  });
+
+  const { data: contractSession } = useScaffoldReadContract({
+    contractName: "Minesweeper",
+    functionName: "sessions",
+    args: [address],
   });
 
   const createSession = useCallback(async () => {
@@ -48,26 +57,40 @@ export const useGameSession = () => {
   }, [writeContractAsync, sessionState.stake]);
 
   useEffect(() => {
-    if (sessionEvents && sessionEvents.length > 0 && sessionEvents[0].args) {
-      const { player, expiryTime, nonce } = sessionEvents[0].args;
-      if (player?.toLowerCase() === address?.toLowerCase()) {
-        setSessionState(prev => ({
-          ...prev,
+    if (contractSession) {
+      const [player, expiryTime, nonce, lastHash, lastActionTime, remainingGas] = contractSession;
+      const now = Math.floor(Date.now() / 1000);
+      
+      if (Number(expiryTime) > now) {
+        setSessionState({
           isActive: true,
           expiryTime: Number(expiryTime),
           nonce: nonce || "0x",
-          lastHash: ethers.keccak256(ethers.solidityPacked(["bytes32"], [nonce])),
-        }));
+          lastHash: lastHash,
+          remainingGas: Number(remainingGas),
+          stake: parseEther("0.01"),
+          createdAt: Number(expiryTime) - SESSION_DURATION,
+        });
+      } else {
+        setSessionState({
+          isActive: false,
+          expiryTime: 0,
+          nonce: "0x",
+          lastHash: "0x",
+          remainingGas: 0,
+          stake: parseEther("0.01"),
+          createdAt: 0,
+        });
       }
     }
-  }, [sessionEvents, address]);
+  }, [contractSession]);
 
   useEffect(() => {
     const checkExpiry = () => {
       if (sessionState.isActive && sessionState.expiryTime < Date.now() / 1000) {
         setSessionState(prev => ({
           ...prev,
-          isActive: false
+          isActive: false,
         }));
       }
     };
@@ -76,9 +99,39 @@ export const useGameSession = () => {
     return () => clearInterval(interval);
   }, [sessionState.expiryTime, sessionState.isActive]);
 
+  const closeSession = useCallback(async () => {
+    if (!address) {
+      notification.error("Please connect your wallet");
+      return;
+    }
+
+    try {
+      await writeContractAsync({
+        functionName: "closeSession",
+      });
+
+      const now = Math.floor(Date.now() / 1000);
+      setSessionState({
+        isActive: false,
+        expiryTime: 0,
+        nonce: "0x",
+        lastHash: "0x",
+        remainingGas: 0,
+        stake: parseEther("0.01"),
+        createdAt: now,
+      });
+
+      notification.success("Session closed successfully");
+    } catch (error) {
+      console.error("Failed to close session:", error);
+      notification.error("Failed to close session");
+    }
+  }, [writeContractAsync, address]);
+
   return {
     sessionState,
     setSessionState,
     createSession,
+    closeSession,
   };
 };

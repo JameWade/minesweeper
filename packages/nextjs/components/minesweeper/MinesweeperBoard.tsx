@@ -19,7 +19,7 @@ export const MinesweeperBoard = ({ board, onCellClick, onCellRightClick }: Mines
 
   const getCellColor = (cell: Cell) => {
     if (!cell.isRevealed) return "bg-base-300";
-    if (cell.isMine) return "bg-error";
+    if (cell.isMine) return "bg-black text-red-500";
     return "bg-base-200";
   };
 

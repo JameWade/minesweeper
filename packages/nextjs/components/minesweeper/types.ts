@@ -27,4 +27,11 @@ export interface SessionState {
   lastHash: string;
   remainingGas: number;
   stake: bigint;
+  createdAt: number;
+}
+
+export interface LeaderboardEntry {
+  address: string;
+  score: number;
+  timestamp: number;
 }

@@ -67,20 +67,10 @@ Run smart contract test with `yarn hardhat:test`
 - Edit your deployment scripts in `packages/hardhat/deploy`
 
 
-## Documentation
-
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
-
-To know more about its features, check out our [website](https://scaffoldeth.io).
-
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
 
 
-#########
+## Run the minesweeper
+
 yarn chain
 yarn deploy --network localhost
 yarn start

@@ -60,6 +60,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     event GameOver(address indexed player, bool won, uint256 score, uint256 timeSpent);
     event SessionCreated(address indexed player, uint256 expiryTime, bytes32 nonce);
     event BatchMoveProcessed(address indexed player, uint256 moveCount, bytes32 stateHash);
+    event SessionClosed(address indexed player, uint256 refundAmount);
 
 
     constructor() Ownable(msg.sender) {}
@@ -98,8 +99,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
         bytes32 boardHash = MinesweeperUtils.generateBoard(salt);
         
-        
-
         // 初始化状态哈希
         bytes32 initialStateHash = keccak256(abi.encode(boardHash, games[msg.sender].revealedMask));
 
@@ -115,7 +114,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         emit GameStarted(msg.sender, boardHash, block.timestamp);
     }
 
-    // 修改 processBatchMoves 函数
     function processBatchMoves(Move[] calldata moves, bytes memory signature) external whenNotPaused nonReentrant {
         Session storage session = sessions[msg.sender];
         require(block.timestamp < session.expiryTime, "Session expired");
@@ -125,7 +123,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
         uint256 gasStart = gasleft();
 
-        // 将 moves 转换为两个数组
         uint8[] memory xCoords = new uint8[](moves.length);
         uint8[] memory yCoords = new uint8[](moves.length);
         for (uint256 i = 0; i < moves.length; i++) {
@@ -164,7 +161,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         require(!game.isOver, "Game is over");
         require(x < WIDTH && y < HEIGHT, "Invalid coordinates");
 
-        // 直接调用 _revealArea，让它处理揭示和递归
         _revealArea(game, x, y);
 
         if (_checkWin(game)) {
@@ -267,18 +263,19 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     // 内部函数：计算得分
     function _calculateScore(Game storage game) internal view returns (uint256) {
         uint256 timeSpent = block.timestamp - game.startTime;
-        uint256 baseScore = 10000;
+        
+        uint256 score = 1000;  // 基础分
 
-        if (timeSpent >= baseScore) return 1000;
-        return baseScore - timeSpent;
+        if (timeSpent < 180) {  // 3分钟内完成
+            score += (180 - timeSpent) * 5;  // 每提前1秒加5分
+        }
+        return score;
     }
 
-    // 修改 receive 函数
     receive() external payable {
         require(msg.sender == owner(), "Only owner can send ETH directly");
     }
 
-    // 添加一个查询 session 的函数
     function getSession(address player) external view returns (
         address sessionPlayer,
         uint256 expiryTime,
@@ -296,6 +293,24 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             session.lastActionTime,
             session.remainingGas
         );
+    }
+
+    function closeSession() external nonReentrant whenNotPaused {
+        Session storage session = sessions[msg.sender];
+        require(session.expiryTime > 0, "No active session");
+        
+        // 确保合约有足够的 ETH
+        uint256 timeLeft = session.expiryTime > block.timestamp ? 
+            session.expiryTime - block.timestamp : 0;
+        uint256 refundAmount = (0.01 ether * timeLeft) / SESSION_DURATION;
+        require(address(this).balance >= refundAmount, "Insufficient contract balance");
+        
+        // 先删除 session 再转账，防止重入攻击
+        delete sessions[msg.sender];
+        
+        payable(msg.sender).transfer(refundAmount);
+        
+        emit SessionClosed(msg.sender, refundAmount);
     }
 }
 

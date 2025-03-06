@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useAccount, useWalletClient } from "wagmi";
-import { usePublicClient } from "wagmi";
-import { Cell, GameState, Move, SessionState } from "~~/components/minesweeper/types";
+import { GameState, Move, SessionState } from "~~/components/minesweeper/types";
 import { useScaffoldEventHistory, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 
-// 初始状态
 const INITIAL_BOARD_STATE: GameState = {
   board: Array(16)
     .fill(null)
@@ -35,20 +33,17 @@ export const useGameBoard = ({
   sessionState: SessionState;
   setSessionState: (state: SessionState) => void;
 }) => {
-  // 状态管理
   const [gameState, setGameState] = useState<GameState>(INITIAL_BOARD_STATE);
   const [pendingMoves, setPendingMoves] = useState<Move[]>([]);
   const [isProcessingMoves, setIsProcessingMoves] = useState(false);
   const [gameStartBlock, setGameStartBlock] = useState<bigint>(0n);
 
-  // Web3 hooks
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { writeContractAsync } = useScaffoldWriteContract({
     contractName: "Minesweeper",
   });
 
-  // 事件监听
   const { data: gameStartEvents } = useScaffoldEventHistory({
     contractName: "Minesweeper",
     eventName: "GameStarted",
@@ -73,14 +68,12 @@ export const useGameBoard = ({
     watch: true,
   });
 
-  // 使用 scaffold 读取合约
   const { data: contractSession } = useScaffoldReadContract({
     contractName: "Minesweeper",
     functionName: "sessions",
     args: [address],
   });
 
-  // 游戏操作函数
   const startNewGame = useCallback(
     async (salt: string) => {
       if (!address) {
@@ -95,7 +88,7 @@ export const useGameBoard = ({
 
         await writeContractAsync({
           functionName: "startNewGame",
-          args: [salt],
+          args: [salt as `0x${string}`],
         });
       } catch (error) {
         console.error("Failed to start new game:", error);
@@ -184,8 +177,8 @@ export const useGameBoard = ({
     try {
       // 确保 moves 数组格式正确
       const formattedMoves = moves.map(m => ({
-        x: BigInt(m.x),
-        y: BigInt(m.y),
+        x: Number(m.x),
+        y: Number(m.y),
       }));
 
       if (!writeContractAsync) {
@@ -225,12 +218,6 @@ export const useGameBoard = ({
 
       // 2. 准备移动数据
       const moves = pendingMoves.slice(0, 20);
-      console.log("Processing moves:", {
-        moves,
-        nonce,
-        lastHash,
-      });
-
       // 4. 签名移动
       const signature = await signMoves(moves, address, nonce, lastHash);
 
@@ -264,7 +251,7 @@ export const useGameBoard = ({
       const { player, boardHash, timestamp } = event.args;
       if (player.toLowerCase() === address?.toLowerCase()) {
         // 设置游戏开始区块号
-        
+
         setGameStartBlock(event.blockNumber);
         const newBoard = Array(16)
           .fill(null)
@@ -310,7 +297,7 @@ export const useGameBoard = ({
       if (!event?.args) return;
 
       const { player, x, y, adjacentMines, stateHash } = event.args;
-      
+
       if (player.toLowerCase() === address?.toLowerCase()) {
         setGameState(prev => {
           const newBoard = [...prev.board];
@@ -337,12 +324,28 @@ export const useGameBoard = ({
       const { player, won, score, timeSpent } = event.args;
       if (player.toLowerCase() === address?.toLowerCase()) {
         console.log("Game Over:", { won, score, timeSpent });
-        setGameState(prev => ({
-          ...prev,
-          isOver: true,
-          hasWon: won,
-          score: Number(score),
-        }));
+
+        // 在游戏结束时显示所有地雷
+        setGameState(prev => {
+          const newBoard = prev.board.map((row, y) =>
+            row.map((cell, x) => {
+              const hasMine = isMine(prev.stateHash, x, y);
+              return {
+                ...cell,
+                isMine: hasMine,
+                isRevealed: hasMine ? true : cell.isRevealed,
+              };
+            }),
+          );
+
+          return {
+            ...prev,
+            board: newBoard,
+            isOver: true,
+            hasWon: won,
+            score: Number(score),
+          };
+        });
       }
     },
     [address],
@@ -365,6 +368,15 @@ export const useGameBoard = ({
       handleGameOver(gameOverEvents[0]);
     }
   }, [gameOverEvents, handleGameOver]);
+
+  // 监听 session 状态变化
+  useEffect(() => {
+    // 当 session 不活跃或过期时，重置游戏状态
+    if (!sessionState.isActive || sessionState.expiryTime < Date.now() / 1000) {
+      setGameState(INITIAL_BOARD_STATE);
+      setPendingMoves([]);
+    }
+  }, [sessionState.isActive, sessionState.expiryTime]);
 
   return {
     gameState,

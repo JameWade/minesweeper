@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { useGameBoard } from "./useGameBoard";
 import { useGameSession } from "./useGameSession";
+import { useLeaderboard } from './useLeaderboard';
 
 export const useMinesweeper = () => {
-  const { sessionState, setSessionState, createSession } = useGameSession();
+  const { sessionState, setSessionState, createSession, closeSession } = useGameSession();
+  const { entries: leaderboardEntries } = useLeaderboard();
 
   const {
     gameState,
@@ -16,23 +18,17 @@ export const useMinesweeper = () => {
     processPendingMoves,
   } = useGameBoard({ sessionState, setSessionState });
 
-  // 自动处理待处理的移动
-  useEffect(() => {
-    if (isProcessingMoves) return;  // 如果正在处理，就不要再触发
-    if (pendingMoves.length >= 5 && !isProcessingMoves) {
-      processPendingMoves();
-    }
-  }, [pendingMoves, isProcessingMoves, processPendingMoves]);
-
   return {
     gameState,
     sessionState,
     pendingMoves,
     isProcessingMoves,
     createSession,
+    closeSession,
     startNewGame,
     handleCellClick,
     handleCellRightClick,
     processPendingMoves,
+    leaderboardEntries,
   };
 };

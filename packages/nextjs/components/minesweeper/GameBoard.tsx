@@ -37,9 +37,6 @@ export const GameBoard = ({
   return (
     <>
       <div className="flex flex-col items-center gap-4">
-        <button className="btn btn-secondary" onClick={() => startNewGame(getRandomBytes())}>
-          Restart Game
-        </button>
         <MinesweeperBoard board={gameState.board} onCellClick={onCellClick} onCellRightClick={onCellRightClick} />
         {pendingMoves.length > 0 && sessionState.isActive && (
           <button className="btn btn-secondary" onClick={onProcessMoves} disabled={isProcessingMoves}>
