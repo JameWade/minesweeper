@@ -46,6 +46,11 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     mapping(address => Game) public games;
     mapping(address => Session) public sessions;
     mapping(address => uint256) public playerGames;
+    mapping(address => uint256) public highScores;
+    
+    // 新增玩家列表
+    address[] public players;
+    mapping(address => bool) public isPlayer;  // 用于快速检查是否已是玩家
 
     // 事件
     event GameStarted(address indexed player, bytes32 boardHash, uint256 timestamp);
@@ -166,6 +171,18 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         if (_checkWin(game)) {
             game.isOver = true;
             game.score = _calculateScore(game);
+            
+            // 更新最高分并添加到玩家列表
+            if (game.score > highScores[player]) {
+                highScores[player] = game.score;
+                
+                // 如果是新玩家，添加到列表
+                if (!isPlayer[player]) {
+                    players.push(player);
+                    isPlayer[player] = true;
+                }
+            }
+            
             emit GameOver(player, true, game.score, block.timestamp - game.startTime);
         }
     }
@@ -311,6 +328,18 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         payable(msg.sender).transfer(refundAmount);
         
         emit SessionClosed(msg.sender, refundAmount);
+    }
+
+    function getPlayers() external view returns (address[] memory) {
+        return players;
+    }
+    
+    function getScores(address[] calldata _players) external view returns (uint256[] memory) {
+        uint256[] memory scores = new uint256[](_players.length);
+        for (uint256 i = 0; i < _players.length; i++) {
+            scores[i] = highScores[_players[i]];
+        }
+        return scores;
     }
 }
 
