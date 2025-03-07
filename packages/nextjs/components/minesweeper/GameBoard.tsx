@@ -23,17 +23,6 @@ export const GameBoard = ({
   onProcessMoves,
   startNewGame,
 }: GameBoardProps) => {
-  if (gameState.isOver) {
-    return (
-      <div className="alert alert-info">
-        <span>{gameState.hasWon ? `Congratulations! Score: ${gameState.score}` : "Game Over! Try again?"}</span>
-        <button className="btn btn-primary" onClick={() => startNewGame(getRandomBytes())}>
-          New Game
-        </button>
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="flex flex-col items-center gap-4">
@@ -44,6 +33,33 @@ export const GameBoard = ({
           </button>
         )}
       </div>
+
+      {/* 游戏结束弹窗 */}
+      {gameState.isOver && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-base-200 p-6 rounded-2xl max-w-sm w-full mx-4">
+            <h3 className="text-2xl font-bold mb-4 text-center">
+              {gameState.hasWon ? (
+                <span className="bg-gradient-to-r from-purple-500 to-purple-300 bg-clip-text text-transparent">
+                  Congratulations!
+                </span>
+              ) : (
+                "Game Over!"
+              )}
+            </h3>
+            {gameState.hasWon && (
+              <p className="text-center mb-4">
+                Score: <span className="text-purple-400 font-bold">{gameState.score}</span>
+              </p>
+            )}
+            <div className="flex justify-center">
+              <button className="btn btn-primary" onClick={() => startNewGame(getRandomBytes())}>
+                New Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
-}; 
+};

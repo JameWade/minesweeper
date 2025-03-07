@@ -31,7 +31,9 @@ export const GameStatus = ({ sessionState, onCreateSession, onCloseSession }: Ga
       </div>
       <div className="stat py-1">
         <div className="stat-title text-xs">Remaining ETH</div>
-        <div className="stat-value text-secondary text-lg leading-none">{formatEther(sessionState.stake)} ETH</div>
+        <div className="stat-value text-secondary text-lg leading-none">
+          {Number(formatEther(sessionState.stake)).toFixed(4)} ETH
+        </div>
       </div>
       {sessionState.isActive && !isExpired && onCloseSession && (
         <div className="stat py-1">
