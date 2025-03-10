@@ -1,10 +1,9 @@
-import { GameState, SessionState } from "./types";
+import { GameState } from "./types";
 import { MinesweeperBoard } from "./MinesweeperBoard";
 import { getRandomBytes } from "~~/utils/scaffold-eth";
 
 interface GameBoardProps {
   gameState: GameState;
-  sessionState: SessionState;
   pendingMoves: { x: number; y: number }[];
   isProcessingMoves: boolean;
   onCellClick: (x: number, y: number) => void;
@@ -15,7 +14,6 @@ interface GameBoardProps {
 
 export const GameBoard = ({
   gameState,
-  sessionState,
   pendingMoves,
   isProcessingMoves,
   onCellClick,
@@ -27,7 +25,7 @@ export const GameBoard = ({
     <>
       <div className="flex flex-col items-center gap-4">
         <MinesweeperBoard board={gameState.board} onCellClick={onCellClick} onCellRightClick={onCellRightClick} />
-        {pendingMoves.length > 0 && sessionState.isActive && (
+        {pendingMoves.length > 0 && (
           <button className="btn btn-secondary" onClick={onProcessMoves} disabled={isProcessingMoves}>
             Process Moves ({pendingMoves.length})
           </button>

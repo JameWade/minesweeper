@@ -9,19 +9,14 @@ import { parseEther } from "viem";
 export const MinesweeperGame = () => {
   const {
     gameState,
-    sessionState,
     pendingMoves,
     isProcessingMoves,
-    createSession,
     startNewGame,
     handleCellClick,
     handleCellRightClick,
     processPendingMoves,
-    closeSession,
     leaderboardEntries,
   } = useMinesweeper();
-
-  const [inputAmount, setInputAmount] = useState("0.01");
 
   // 自动处理待处理的移动
   useEffect(() => {
@@ -46,24 +41,16 @@ export const MinesweeperGame = () => {
     };
   }, [pendingMoves.length, isProcessingMoves, gameState.isOver, processPendingMoves]); 
 
-  const isSessionExpired = sessionState.expiryTime < Date.now() / 1000;
-  const isSessionValid = sessionState.isActive && !isSessionExpired;
-
-  if (!isSessionValid) {
+  if (!gameState.isActive) {
     return (
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={inputAmount}
-          onChange={e => setInputAmount(e.target.value)}
-          className="input input-bordered w-24"
-        />
-        <span className="text-sm">ETH</span>
-        <button className="btn btn-primary" onClick={() => createSession(parseEther(inputAmount))}>
-          Create Session
-        </button>
+      <div className="flex gap-8 justify-center items-start">
+        {/* 左侧空白区域，保持布局一致 */}
+        <div></div>
+        
+        {/* 右侧排行榜 */}
+        <div className="flex flex-col gap-4 w-80">
+          <Leaderboard entries={leaderboardEntries} />
+        </div>
       </div>
     );
   }
@@ -75,7 +62,7 @@ export const MinesweeperGame = () => {
         {gameState.stateHash && (
           <GameBoard
             gameState={gameState}
-            sessionState={sessionState}
+            sessionState={gameState.sessionState}
             pendingMoves={pendingMoves}
             isProcessingMoves={isProcessingMoves}
             onCellClick={handleCellClick}

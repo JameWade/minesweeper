@@ -11,7 +11,6 @@ interface GameStatusProps {
 
 export const GameStatus = ({ sessionState, onCreateSession, onCloseSession }: GameStatusProps) => {
   const isExpired = sessionState.expiryTime < Date.now() / 1000;
-  const [inputAmount, setInputAmount] = useState("");
 
   if (isExpired) {
     return (
@@ -27,12 +26,6 @@ export const GameStatus = ({ sessionState, onCreateSession, onCloseSession }: Ga
         <div className="stat-title text-xs">Session Expires In</div>
         <div className="stat-value text-secondary text-lg leading-none">
           {Math.max(0, Math.floor((sessionState.expiryTime - Date.now() / 1000) / 60))}m
-        </div>
-      </div>
-      <div className="stat py-1">
-        <div className="stat-title text-xs">Remaining ETH</div>
-        <div className="stat-value text-secondary text-lg leading-none">
-          {Number(formatEther(sessionState.stake)).toFixed(4)} ETH
         </div>
       </div>
       {sessionState.isActive && !isExpired && onCloseSession && (

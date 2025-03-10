@@ -1,11 +1,12 @@
 "use client";
-import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
+import { FaucetButton } from "~~/components/scaffold-eth";
+import { AccountKitButton } from "~~/components/account-kit/AccountKitButton";
 import React from "react";
-import { GameStatus } from "~~/components/minesweeper/GameStatus";
 import { useMinesweeper } from "~~/hooks/useMinesweeper";
+import { getRandomBytes } from "~~/utils/scaffold-eth";
 
 export const Header = () => {
-  const { sessionState, createSession, closeSession } = useMinesweeper();
+  const { startNewGame } = useMinesweeper();
 
   return (
     <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 flex-shrink-0 justify-between z-20 shadow-md shadow-secondary px-0 sm:px-2">
@@ -15,12 +16,12 @@ export const Header = () => {
         </h1>
       </div>
       <div className="navbar-center">
-        {sessionState?.isActive && (
-          <GameStatus sessionState={sessionState} onCreateSession={createSession} onCloseSession={closeSession} />
-        )}
+        <button className="btn btn-primary btn-sm" onClick={() => startNewGame(getRandomBytes())}>
+          Start Game
+        </button>
       </div>
       <div className="navbar-end">
-        <RainbowKitCustomConnectButton />
+        <AccountKitButton />
         <FaucetButton />
       </div>
     </div>

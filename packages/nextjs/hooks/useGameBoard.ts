@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useAccount, useWalletClient } from "wagmi";
-import { GameState, Move, SessionState } from "~~/components/minesweeper/types";
+import { GameState, Move, } from "~~/components/minesweeper/types";
 import { useScaffoldEventHistory, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
+import { useSmartAccountClient, useSendUserOperation } from "@account-kit/react";
+import { encodeFunctionData } from "viem";
+import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 
 const INITIAL_BOARD_STATE: GameState = {
   board: Array(16)
@@ -27,13 +30,7 @@ const INITIAL_BOARD_STATE: GameState = {
   mineCount: 0 
 };
 
-export const useGameBoard = ({
-  sessionState,
-  setSessionState,
-}: {
-  sessionState: SessionState;
-  setSessionState: (state: SessionState) => void;
-}) => {
+export const useGameBoard = () => {
   const [gameState, setGameState] = useState<GameState>(INITIAL_BOARD_STATE);
   const [pendingMoves, setPendingMoves] = useState<Move[]>([]);
   const [isProcessingMoves, setIsProcessingMoves] = useState(false);
@@ -75,42 +72,56 @@ export const useGameBoard = ({
     args: [address],
   });
 
-  const startNewGame = useCallback(
-    async (salt: string) => {
-      if (!address) {
-        notification.error("Please connect your wallet");
-        return;
-      }
-
-      try {
-        // 重置游戏状态
-        setGameState(INITIAL_BOARD_STATE);
-        setPendingMoves([]);
-
-        await writeContractAsync({
-          functionName: "startNewGame",
-          args: [salt as `0x${string}`],
-        });
-      } catch (error) {
-        console.error("Failed to start new game:", error);
-        notification.error("Failed to start new game");
-      }
+  const { client } = useSmartAccountClient({});
+  const { targetNetwork } = useTargetNetwork();
+  const { sendUserOperation } = useSendUserOperation({
+    client,
+    waitForTxn: true,
+    onSuccess: () => {
+      notification.success("Game started successfully");
     },
-    [writeContractAsync, address],
-  );
+    onError: (error) => {
+      console.error("Failed to start game:", error);
+      notification.error("Failed to start game");
+    }
+  });
+
+  const startNewGame = useCallback(async (salt: string) => {
+    if (!address) {
+      notification.error("Please connect your wallet");
+      return;
+    }
+
+    try {
+      const { default: deployedContracts } = await import("~~/contracts/deployedContracts");
+      const { abi, address: contractAddress } = deployedContracts[targetNetwork.id as keyof typeof deployedContracts]["Minesweeper"];
+      
+      const data = encodeFunctionData({
+        abi,
+        functionName: "startNewGame",
+        args: [salt as `0x${string}`] as const,
+      });
+      
+      await sendUserOperation({
+        uo: [{
+          target: contractAddress,
+          data,
+          value: 0n,
+        }],
+      });
+    } catch (error) {
+      console.error("Failed to start game:", error);
+    }
+  }, [address, sendUserOperation, targetNetwork.id]);
 
   const handleCellClick = useCallback(
     (x: number, y: number) => {
-      if (!sessionState.isActive) {
-        notification.error("Please create a session first");
-        return;
-      }
       if (gameState.board[y][x].isFlagged) {
         return;
       }
       setPendingMoves(prev => [...prev, { x, y }]);
     },
-    [sessionState.isActive, gameState.board],
+    [gameState.board],
   );
 
   const handleCellRightClick = useCallback(
@@ -210,13 +221,6 @@ export const useGameBoard = ({
 
       const [player, expiryTime, nonce, lastHash, lastActionTime, remainingGas] = contractSession;
 
-      // 2. 更新本地 session 状态
-      setSessionState({
-        ...sessionState,
-        nonce,
-        lastHash,
-      });
-
       // 2. 准备移动数据
       const moves = pendingMoves.slice(0, 20);
       // 4. 签名移动
@@ -233,7 +237,7 @@ export const useGameBoard = ({
     } finally {
       setIsProcessingMoves(false);
     }
-  }, [writeContractAsync, address, walletClient, pendingMoves, contractSession, setSessionState, sessionState]);
+  }, [writeContractAsync, address, walletClient, pendingMoves, contractSession]);
 
   // 添加雷阵检查函数
   const isMine = (boardHash: string, x: number, y: number): boolean => {
@@ -368,15 +372,6 @@ export const useGameBoard = ({
       handleGameOver(gameOverEvents[0]);
     }
   }, [gameOverEvents, handleGameOver]);
-
-  // 监听 session 状态变化
-  useEffect(() => {
-    // 只在 session 过期时重置游戏状态
-    if (sessionState.expiryTime < Date.now() / 1000) {
-      setGameState(INITIAL_BOARD_STATE);
-      setPendingMoves([]);
-    }
-  }, [sessionState.expiryTime]);
 
   return {
     gameState,
