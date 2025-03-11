@@ -26,12 +26,17 @@ export interface SessionState {
   expiryTime: number;
   nonce: string;
   lastHash: string;
-  stake: bigint;
   createdAt: number;
 }
 
 export interface LeaderboardEntry {
   address: string;
   score: number;
-  timestamp: number;
+}
+
+export interface NFTMintStatus {
+  canMint: boolean;
+  rank?: number;
+  score?: number;
+  hasMinted: boolean;
 }

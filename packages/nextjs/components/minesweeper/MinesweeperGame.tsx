@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useMinesweeper } from "~~/hooks/useMinesweeper";
 import { getRandomBytes } from "~~/utils/scaffold-eth";
 import { GameBoard } from "./GameBoard";
-import { GameStatus } from "./GameStatus";
+import { GameStatus, SessionStatus } from "./GameStatus";
 import { Leaderboard } from "./Leaderboard";
-import { parseEther } from "viem";
+import { NFTMint } from "./NFTMint";
+import { notification } from "~~/utils/scaffold-eth";
 
 export const MinesweeperGame = () => {
   const {
@@ -21,7 +22,7 @@ export const MinesweeperGame = () => {
     leaderboardEntries,
   } = useMinesweeper();
 
-  const [inputAmount, setInputAmount] = useState("0.01");
+  const [score, setScore] = useState(0);
 
   // 自动处理待处理的移动
   useEffect(() => {
@@ -46,24 +47,31 @@ export const MinesweeperGame = () => {
     };
   }, [pendingMoves.length, isProcessingMoves, gameState.isOver, processPendingMoves]); 
 
+  // 监听游戏结束
+  useEffect(() => {
+    if (gameState.isOver) {
+      if (gameState.hasWon) {
+        notification.success(
+          `🎉 恭喜！你赢了！得分：${gameState.score}`,
+          { duration: 5000 }
+        );
+        setScore(gameState.score);
+      } else {
+        notification.error(
+          "💥 游戏结束！你踩到地雷了！",
+          { duration: 5000 }
+        );
+      }
+    }
+  }, [gameState.isOver, gameState.hasWon, gameState.score]);
+
   const isSessionExpired = sessionState.expiryTime < Date.now() / 1000;
   const isSessionValid = sessionState.isActive && !isSessionExpired;
 
   if (!isSessionValid) {
     return (
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={inputAmount}
-          onChange={e => setInputAmount(e.target.value)}
-          className="input input-bordered w-24"
-        />
-        <span className="text-sm">ETH</span>
-        <button className="btn btn-primary" onClick={() => createSession(parseEther(inputAmount))}>
-          Create Session
-        </button>
+      <div className="flex flex-col items-center gap-4">
+        <Leaderboard entries={leaderboardEntries} />
       </div>
     );
   }
@@ -72,6 +80,11 @@ export const MinesweeperGame = () => {
     <div className="flex gap-8 justify-center items-start">
       {/* 左侧棋盘 */}
       <div>
+        <GameStatus 
+          gameState={gameState}
+          pendingMoves={pendingMoves}
+          isProcessingMoves={isProcessingMoves}
+        />
         {gameState.stateHash && (
           <GameBoard
             gameState={gameState}
@@ -103,6 +116,7 @@ export const MinesweeperGame = () => {
           </button>
         )}
         <Leaderboard entries={leaderboardEntries} />
+        <NFTMint leaderboardEntries={leaderboardEntries} />
       </div>
     </div>
   );

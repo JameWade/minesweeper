@@ -7,6 +7,11 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "hardhat/console.sol";
 import "./MinesweeperUtils.sol";
 
+// NFT 合约接口
+interface IMinesweeperNFT {
+    function grantMintAccess(address player) external;
+}
+
 contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     using MinesweeperUtils for bytes32;
 
@@ -39,7 +44,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         bytes32 nonce;
         bytes32 lastHash;
         uint256 lastActionTime;
-        uint256 stake;  
     }
 
     // 存储
@@ -70,8 +74,11 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     event GameOver(address indexed player, bool won, uint256 score, uint256 timeSpent);
     event SessionCreated(address indexed player, uint256 expiryTime, bytes32 nonce);
     event BatchMoveProcessed(address indexed player, uint256 moveCount, bytes32 stateHash);
-    event SessionClosed(address indexed player, uint256 refundAmount);
+    event SessionClosed(address indexed player);
+    event NFTMintEligible(address indexed player, uint256 rank, uint256 score);
 
+    // NFT 合约地址
+    address public nftContract;
 
     constructor() Ownable(msg.sender) {}
 
@@ -84,21 +91,16 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     }
 
     // 创建游戏会话
-    function createSession() external payable whenNotPaused {
-        require(msg.value >= 0.01 ether, "Insufficient payment");
-        
+    function createSession() external whenNotPaused {
         bytes32 nonce = keccak256(abi.encodePacked(msg.sender, block.timestamp, block.number, block.prevrandao));
         
-        unchecked {
-            sessions[msg.sender] = Session({
-                player: msg.sender,
-                expiryTime: block.timestamp + SESSION_DURATION,
-                nonce: nonce,
-                lastHash: keccak256(abi.encodePacked(nonce)),
-                lastActionTime: block.timestamp,
-                stake: msg.value  // 存储质押的 ETH 金额
-            });
-        }
+        sessions[msg.sender] = Session({
+            player: msg.sender,
+            expiryTime: block.timestamp + SESSION_DURATION,
+            nonce: nonce,
+            lastHash: keccak256(abi.encodePacked(nonce)),
+            lastActionTime: block.timestamp
+        });
         
         emit SessionCreated(msg.sender, block.timestamp + SESSION_DURATION, nonce);
     }
@@ -124,13 +126,12 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         emit GameStarted(msg.sender, boardHash, mineCount, block.timestamp);
     }
 
-    function processBatchMoves(Move[] calldata moves, bytes memory signature) external whenNotPaused nonReentrant {
+    function processBatchMoves(Move[] calldata moves) external whenNotPaused nonReentrant {
         Session storage session = sessions[msg.sender];
         require(block.timestamp < session.expiryTime, "Session expired");
         require(moves.length > 0, "No moves provided");
         require(moves.length <= 20, "Batch too large");
         
-        uint256 gasStart = gasleft();
 
         uint8[] memory xCoords = new uint8[](moves.length);
         uint8[] memory yCoords = new uint8[](moves.length);
@@ -141,11 +142,8 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
         bytes32 messageHash = keccak256(abi.encode(msg.sender, xCoords, yCoords, session.nonce, session.lastHash));
         
-    
-        console.logBytes32( session.nonce);
-        console.logBytes32( session.lastHash);
-        console.logBytes32(messageHash);
-        require(MinesweeperUtils.verifySignature(messageHash, signature, msg.sender), "Invalid signature");
+
+        //require(MinesweeperUtils.verifySignature(messageHash, signature, msg.sender), "Invalid signature");
 
         Game storage game = games[msg.sender];
         require(!game.isOver, "Game is over");
@@ -155,14 +153,9 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             if (game.isOver) break;
         }
 
-        uint256 gasUsed = gasStart - gasleft();
-        uint256 gasCost = tx.gasprice * gasUsed;  // 计算这次操作需要花费的 ETH
-        require(session.stake >= gasCost, "Insufficient stake");  // 检查质押余额是否足够支付
-        session.stake -= gasCost;  // 从质押金额中扣除
         
         session.lastHash = messageHash;
         session.lastActionTime = block.timestamp;
-
 
         emit BatchMoveProcessed(msg.sender, game.moveCount, game.stateHash);
     }
@@ -183,11 +176,12 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             if (game.score > highScores[player]) {
                 highScores[player] = game.score;
                 
-                // 如果是新玩家，添加到列表
                 if (!isPlayer[player]) {
                     players.push(player);
                     isPlayer[player] = true;
                 }
+                // 检查并通知 NFT 铸造资格
+                _checkAndNotifyNFT(player, game.score);
             }
             
             emit GameOver(player, true, game.score, block.timestamp - game.startTime);
@@ -287,10 +281,12 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     function _calculateScore(Game storage game) internal view returns (uint256) {
         uint256 timeSpent = block.timestamp - game.startTime;
         
-        uint256 score = 1000;  // 基础分
+        uint256 score = 100;  // 基础分
 
-        if (timeSpent < 180) {  // 3分钟内完成
-            score += (180 - timeSpent) * 5;  // 每提前1秒加5分
+        if (timeSpent < 240) {  // 4分钟内完成
+            score += (240 - timeSpent) * 2;  // 每提前1秒加2分
+        }else if(timeSpent < 300){
+            score += (300 - timeSpent) * 1;  // 每提前1秒加1分
         }
         return score;
     }
@@ -304,8 +300,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         uint256 expiryTime,
         bytes32 nonce,
         bytes32 lastHash,
-        uint256 lastActionTime,
-        uint256 stake
+        uint256 lastActionTime
     ) {
         Session storage session = sessions[player];
         return (
@@ -313,8 +308,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             session.expiryTime,
             session.nonce,
             session.lastHash,
-            session.lastActionTime,
-            session.stake
+            session.lastActionTime
         );
     }
 
@@ -322,15 +316,9 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         Session storage session = sessions[msg.sender];
         require(session.expiryTime > 0, "No active session");
         
-        uint256 refundAmount = session.stake;  // 直接退还剩余的质押金额
-        require(address(this).balance >= refundAmount, "Insufficient contract balance");
-        
-        // 先删除 session 再转账，防止重入攻击
         delete sessions[msg.sender];
         
-        payable(msg.sender).transfer(refundAmount);
-        
-        emit SessionClosed(msg.sender, refundAmount);
+        emit SessionClosed(msg.sender);
     }
 
     function getPlayers() external view returns (address[] memory) {
@@ -343,6 +331,46 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             scores[i] = highScores[_players[i]];
         }
         return scores;
+    }
+
+    // 设置 NFT 合约地址
+    function setNFTContract(address _nftContract) external onlyOwner {
+        nftContract = _nftContract;
+    }
+
+    // 检查并通知 NFT 铸造资格
+    function _checkAndNotifyNFT(address player, uint256 score) internal {
+        // 获取前10名的分数
+        uint256[] memory topScores = new uint256[](10);
+        address[] memory topPlayers = new address[](10);
+
+        for (uint256 i = 0; i < players.length; i++) {
+            uint256 playerScore = highScores[players[i]];
+            // 找到合适的插入位置
+            for (uint256 j = 0; j < 10; j++) {
+                if (playerScore > topScores[j]) {
+                    // 移动数组元素
+                    for (uint256 k = 9; k > j; k--) {
+                        topScores[k] = topScores[k-1];
+                        topPlayers[k] = topPlayers[k-1];
+                    }
+                    // 插入新分数
+                    topScores[j] = playerScore;
+                    topPlayers[j] = players[i];
+                    break;
+                }
+            }
+        }
+
+        // 检查玩家是否在前10名
+        for (uint256 i = 0; i < 10; i++) {
+            if (topPlayers[i] == player) {
+                // 授予铸造资格并发出事件
+                IMinesweeperNFT(nftContract).grantMintAccess(player);
+                emit NFTMintEligible(player, i + 1, score);
+                break;
+            }
+        }
     }
 }
 

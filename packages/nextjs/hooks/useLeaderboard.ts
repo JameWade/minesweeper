@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useScaffoldReadContract } from "./scaffold-eth";
-
-interface LeaderboardEntry {
-  address: string;
-  score: number;
-}
+import { LeaderboardEntry } from "~~/components/minesweeper/types";
 
 export const useLeaderboard = () => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);

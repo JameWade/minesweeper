@@ -1,7 +1,4 @@
-interface LeaderboardEntry {
-  address: string;
-  score: number;
-}
+import { LeaderboardEntry } from "./types";
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];

@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { ethers } from "ethers";
-import { parseEther } from "viem";
 import { useAccount } from "wagmi";
 import { SessionState } from "~~/components/minesweeper/types";
 import { useScaffoldEventHistory, useScaffoldWriteContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
@@ -14,7 +12,6 @@ export const useGameSession = () => {
     expiryTime: 0,
     nonce: "0x",
     lastHash: "0x",
-    stake: parseEther("0.01"),
     createdAt: 0,
   });
 
@@ -37,7 +34,7 @@ export const useGameSession = () => {
     args: [address],
   });
 
-  const createSession = useCallback(async (amount: bigint) => {
+  const createSession = useCallback(async () => {
     if (!address) {
       notification.error("Please connect your wallet");
       return;
@@ -46,7 +43,6 @@ export const useGameSession = () => {
     try {
       await writeContractAsync({
         functionName: "createSession",
-        value: amount,
         gas: 500000n,
         gasPrice: 1000000000n,
       });
@@ -57,7 +53,7 @@ export const useGameSession = () => {
 
   useEffect(() => {
     if (contractSession) {
-      const [player, expiryTime, nonce, lastHash, lastActionTime, stake] = contractSession;
+      const [player, expiryTime, nonce, lastHash, lastActionTime] = contractSession;
       const now = Math.floor(Date.now() / 1000);
       
       if (Number(expiryTime) > now) {
@@ -66,7 +62,6 @@ export const useGameSession = () => {
           expiryTime: Number(expiryTime),
           nonce: nonce || "0x",
           lastHash: lastHash,
-          stake: BigInt(stake),
           createdAt: Number(expiryTime) - SESSION_DURATION,
         });
       } else {
@@ -113,7 +108,6 @@ export const useGameSession = () => {
         expiryTime: 0,
         nonce: "0x",
         lastHash: "0x",
-        stake: sessionState.stake,
         createdAt: now,
       });
 
@@ -122,7 +116,7 @@ export const useGameSession = () => {
       console.error("Failed to close session:", error);
       notification.error("Failed to close session");
     }
-  }, [writeContractAsync, address, sessionState.stake]);
+  }, [writeContractAsync, address]);
 
   return {
     sessionState,

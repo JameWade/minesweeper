@@ -20,19 +20,36 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
 
-  await deploy(
-    "Minesweeper",
-    {
-      from: deployer,
-      args: [],
-      log: true,
-      autoMine: true,
-    },
-  );
+  // 1. 部署扫雷游戏合约
+  const minesweeper = await deploy("Minesweeper", {
+    from: deployer,
+    args: [],
+    log: true,
+    autoMine: true,
+  });
+
+  // 2. 部署 NFT 合约
+  const nft = await deploy("MinesweeperNFT", {
+    from: deployer,
+    args: [
+      "Minesweeper NFT",  // NFT 名称
+      "MINE",             // NFT 符号
+      minesweeper.address // 扫雷游戏合约地址
+    ],
+    log: true,
+    autoMine: true,
+  });
+
+  // 3. 在扫雷游戏合约中设置 NFT 合约地址
+  const minesweeperContract = await hre.ethers.getContractAt("Minesweeper", minesweeper.address);
+  await minesweeperContract.setNFTContract(nft.address);
+
+  console.log("Minesweeper deployed to:", minesweeper.address);
+  console.log("MinesweeperNFT deployed to:", nft.address);
 };
 
 export default deployYourContract;
 
 // Tags are useful if you have multiple deploy files and only want to run one of them.
 // e.g. yarn deploy --tags YourContract
-deployYourContract.tags = ["Minesweeper"];
+deployYourContract.tags = ["Minesweeper", "MinesweeperNFT"];

@@ -134,7 +134,7 @@ export const useGameBoard = ({
   );
 
   // 移动处理相关函数
-  const signMoves = async (moves: Move[], address: string, nonce: string, lastHash: string): Promise<`0x${string}`> => {
+  const signMoves = async (moves: Move[], address: string, nonce: string, lastHash: string) => {
     if (!walletClient) throw new Error("Wallet not connected");
 
     if (!moves || !Array.isArray(moves)) {
@@ -158,23 +158,23 @@ export const useGameBoard = ({
       throw new Error(`Invalid lastHash format: ${lastHash}`);
     }
 
-    const messageHash = ethers.keccak256(
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "uint8[]", "uint8[]", "bytes32", "bytes32"],
-        [address, xCoords, yCoords, nonce, lastHash],
-      ),
-    );
+    // const messageHash = ethers.keccak256(
+    //   ethers.AbiCoder.defaultAbiCoder().encode(
+    //     ["address", "uint8[]", "uint8[]", "bytes32", "bytes32"],
+    //     [address, xCoords, yCoords, nonce, lastHash],
+    //   ),
+    // );
 
-    // 使用 personal_sign
-    const signature = await walletClient.signMessage({
-      account: walletClient.account,
-      message: { raw: messageHash } as any, // 使用 raw 参数直接签名哈希
-    });
+    // // 使用 personal_sign
+    // const signature = await walletClient.signMessage({
+    //   account: walletClient.account,
+    //   message: { raw: messageHash } as any, // 使用 raw 参数直接签名哈希
+    // });
 
-    return signature as `0x${string}`;
+    // return signature as `0x${string}`;
   };
 
-  const sendMovesTransaction = async (moves: Move[], signature: `0x${string}`) => {
+  const sendMovesTransaction = async (moves: Move[]) => {
     try {
       // 确保 moves 数组格式正确
       const formattedMoves = moves.map(m => ({
@@ -188,7 +188,7 @@ export const useGameBoard = ({
 
       const tx = await writeContractAsync({
         functionName: "processBatchMoves",
-        args: [formattedMoves, signature],
+        args: [formattedMoves],
       });
 
       return tx;
@@ -208,7 +208,7 @@ export const useGameBoard = ({
         throw new Error("Failed to read session state");
       }
 
-      const [player, expiryTime, nonce, lastHash, lastActionTime, remainingGas] = contractSession;
+      const [player, expiryTime, nonce, lastHash, lastActionTime,] = contractSession;
 
       // 2. 更新本地 session 状态
       setSessionState({
@@ -220,10 +220,10 @@ export const useGameBoard = ({
       // 2. 准备移动数据
       const moves = pendingMoves.slice(0, 20);
       // 4. 签名移动
-      const signature = await signMoves(moves, address, nonce, lastHash);
+      await signMoves(moves, address, nonce, lastHash);
 
       // 5. 发送交易
-      const tx = await sendMovesTransaction(moves, signature);
+      const tx = await sendMovesTransaction(moves);
 
       // 6. 更新待处理移动
       setPendingMoves(prev => prev.slice(moves.length));
@@ -235,7 +235,6 @@ export const useGameBoard = ({
     }
   }, [writeContractAsync, address, walletClient, pendingMoves, contractSession, setSessionState, sessionState]);
 
-  // 添加雷阵检查函数
   const isMine = (boardHash: string, x: number, y: number): boolean => {
     const positionHash = ethers.solidityPackedKeccak256(["bytes32", "uint8", "uint8"], [boardHash, x, y]);
 
@@ -285,7 +284,7 @@ export const useGameBoard = ({
           board: newBoard,
           startTime: Number(timestamp),
           stateHash: boardHash,
-          mineCount: mineCount,  // 保存地雷数量
+          mineCount: mineCount,  
         });
       }
     },
@@ -323,9 +322,7 @@ export const useGameBoard = ({
 
       const { player, won, score, timeSpent } = event.args;
       if (player.toLowerCase() === address?.toLowerCase()) {
-        console.log("Game Over:", { won, score, timeSpent });
 
-        // 在游戏结束时显示所有地雷
         setGameState(prev => {
           const newBoard = prev.board.map((row, y) =>
             row.map((cell, x) => {
@@ -351,7 +348,6 @@ export const useGameBoard = ({
     [address],
   );
 
-  // 事件监听效果
   useEffect(() => {
     if (gameStartEvents?.[0]?.args) {
       handleGameStart(gameStartEvents[0]);
@@ -359,7 +355,6 @@ export const useGameBoard = ({
   }, [gameStartEvents, handleGameStart]);
 
   useEffect(() => {
-    console.log("Received CellRevealed events:", cellRevealedEvents);
     cellRevealedEvents?.forEach(handleCellRevealed);
   }, [cellRevealedEvents, handleCellRevealed]);
 
@@ -369,9 +364,7 @@ export const useGameBoard = ({
     }
   }, [gameOverEvents, handleGameOver]);
 
-  // 监听 session 状态变化
   useEffect(() => {
-    // 只在 session 过期时重置游戏状态
     if (sessionState.expiryTime < Date.now() / 1000) {
       setGameState(INITIAL_BOARD_STATE);
       setPendingMoves([]);
