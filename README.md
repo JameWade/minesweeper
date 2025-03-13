@@ -36,3 +36,75 @@ yarn chain
 yarn deploy --network localhost
 yarn start
 ```
+
+## 前端发布配置
+
+```
+touch packages/nextjs/utils/scaffold-eth/customChains.ts
+```
+编辑customChains.ts文件
+
+```
+import { defineChain } from "viem";
+
+// monad testnet chain
+export const monadTestnet = defineChain({
+  id: 10143,
+  name: "Monad Testnet",
+  nativeCurrency: { name: "TMON", symbol: "TMON", decimals: 18 },
+  rpcUrls: {
+    default: {
+      http: ["https://testnet-rpc.monad.xyz"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Monad Explorer",
+      url: "https://testnet.monadexplorer.com/",
+    },
+  },
+});
+```
+修改packages/nextjs/scaffold.config.ts
+
+```
+//   targetNetworks: [chains.hardhat], 改成
+targetNetworks: [monadTestnet],
+```
+
+
+
+
+
+
+## 合约部署
+
+
+
+在 hardhat.config.ts 中配置 monadTestnet 网络
+
+```
+monadTestnet: {
+      url: "https://testnet-rpc.monad.xyz",
+      accounts: [deployerPrivateKey],
+    },
+```
+
+然后设置env文件
+```
+touch .env
+```
+
+```
+MONAD_TESTNET_RPC_URL=https://testnet-rpc.monad.xyz
+MONAD_TESTNET_PRIVATE_KEY=your_private_key
+```
+
+最后部署
+```
+yarn deploy --network monadTestnet
+```
+
+
+
+
