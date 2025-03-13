@@ -51,8 +51,14 @@ export const GameStatus = ({ gameState, pendingMoves, isProcessingMoves }: GameS
   const [gameTime, setGameTime] = useState(0);
 
   useEffect(() => {
+    if (!gameState.startTime) {
+      return;
+    }
+
+    setGameTime(Math.max(0, Math.floor(Date.now() / 1000 - gameState.startTime)));
+
     const timer = setInterval(() => {
-      setGameTime(Math.floor(Date.now() / 1000 - gameState.startTime));
+      setGameTime(Math.max(0, Math.floor(Date.now() / 1000 - gameState.startTime)));
     }, 1000);
 
     return () => clearInterval(timer);

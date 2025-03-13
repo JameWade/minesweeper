@@ -110,17 +110,17 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         require(sessions[msg.sender].expiryTime > block.timestamp, "Session expired");
 
         bytes32 boardHash = MinesweeperUtils.generateBoard(salt);
-        uint8 mineCount = MinesweeperUtils.countMines(boardHash);  // 计算地雷数量
+        uint8 mineCount = MinesweeperUtils.countMines(boardHash);
 
         games[msg.sender] = Game({
             boardHash: boardHash,
             revealedMask: 0,
-            startTime: block.timestamp,
+            startTime: block.timestamp,  // 这里是区块时间戳
             isOver: false,
             score: 0,
             stateHash: boardHash,
             moveCount: 0,
-            mineCount: mineCount  // 保存地雷数量
+            mineCount: mineCount
         });
 
         emit GameStarted(msg.sender, boardHash, mineCount, block.timestamp);
@@ -286,7 +286,11 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         if (timeSpent < 240) {  // 4分钟内完成
             score += (240 - timeSpent) * 2;  // 每提前1秒加2分
         }else if(timeSpent < 300){
-            score += (300 - timeSpent) * 1;  // 每提前1秒加1分
+            score += (300 - timeSpent) * 1;  
+        }else if(timeSpent > 300 && timeSpent < 400){
+            score -= (timeSpent - 300) * 1;  // 每晚1秒减1分
+        }else {
+            score = 0;
         }
         return score;
     }
@@ -373,4 +377,5 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         }
     }
 }
+
 

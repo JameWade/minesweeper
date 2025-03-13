@@ -9,12 +9,23 @@ export const NFTMint = ({ leaderboardEntries }: { leaderboardEntries: { address:
   const { mintStatus, mintNFT, generateNFTImage } = useNFTMint();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-
   useEffect(() => {
-    if (canvasRef.current) {
-      generateNFTImage(canvasRef.current);
+    // 检查玩家是否在前10名并获取排名
+    const playerRank = leaderboardEntries
+      .slice(0, 10)
+      .findIndex(entry => entry.address.toLowerCase() === address?.toLowerCase()) + 1;
+    
+    if (playerRank > 0 && canvasRef.current) {
+      // 找到对应的分数
+      const playerEntry = leaderboardEntries.find(entry => entry.address.toLowerCase() === address?.toLowerCase());
+      if (playerEntry) {
+        // 更新 mintStatus 并生成图片
+        mintStatus.rank = playerRank;
+        mintStatus.score = playerEntry.score;
+        generateNFTImage(canvasRef.current);
+      }
     }
-  }, [generateNFTImage]);
+  }, [address, leaderboardEntries, generateNFTImage, mintStatus]);
 
   // 检查玩家是否在前10名
   const isInTop10 = leaderboardEntries

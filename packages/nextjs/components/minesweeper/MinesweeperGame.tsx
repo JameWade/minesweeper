@@ -53,13 +53,13 @@ export const MinesweeperGame = () => {
       if (gameState.hasWon) {
         notification.success(
           `🎉 恭喜！你赢了！得分：${gameState.score}`,
-          { duration: 5000 }
+          { duration: 2000 }
         );
         setScore(gameState.score);
       } else {
         notification.error(
           "💥 游戏结束！你踩到地雷了！",
-          { duration: 5000 }
+          { duration: 2000 }
         );
       }
     }
@@ -106,12 +106,25 @@ export const MinesweeperGame = () => {
             <div className="alert alert-info">
               <span>Start a new game to begin playing!</span>
             </div>
-            <button className="btn btn-primary w-full" onClick={() => startNewGame(getRandomBytes())}>
+            <button 
+              className="btn btn-primary w-full" 
+              onClick={() => {
+                const salt = getRandomBytes();
+                console.log('Generated salt:', salt);
+                startNewGame(salt);
+              }}
+            >
               Start Game
             </button>
           </div>
         ) : (
-          <button className="btn btn-primary w-full" onClick={() => startNewGame(getRandomBytes())}>
+          <button className="btn btn-primary w-full" onClick={
+            () => {
+              const salt = getRandomBytes();
+              console.log('Generated salt:', salt);
+              startNewGame(salt);
+            }
+            }>
             Restart Game
           </button>
         )}

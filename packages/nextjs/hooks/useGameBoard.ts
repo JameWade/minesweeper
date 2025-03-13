@@ -83,13 +83,12 @@ export const useGameBoard = ({
       }
 
       try {
-        // 重置游戏状态
-        setGameState(INITIAL_BOARD_STATE);
-        setPendingMoves([]);
+        
 
         await writeContractAsync({
           functionName: "startNewGame",
           args: [salt as `0x${string}`],
+          gas: 500000n,
         });
       } catch (error) {
         console.error("Failed to start new game:", error);
@@ -251,6 +250,10 @@ export const useGameBoard = ({
       const { player, boardHash, mineCount, timestamp } = event.args;
       if (player.toLowerCase() === address?.toLowerCase()) {
         setGameStartBlock(event.blockNumber);
+        // 重置游戏状态
+        setGameState(INITIAL_BOARD_STATE);
+        setPendingMoves([]);
+
         const newBoard = Array(16)
           .fill(null)
           .map(() =>
@@ -265,19 +268,20 @@ export const useGameBoard = ({
           );
 
         // 打印雷阵可视化，使用本地实现的 isMine 函数
-        console.log("New Game Board Hash:", boardHash);
-        console.log("Board Visualization:");
-        let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
-        for (let y = 0; y < 16; y++) {
-          boardStr += y.toString(16) + " ";
-          for (let x = 0; x < 16; x++) {
-            const hasMine = isMine(boardHash, x, y);
-            boardStr += hasMine ? "💣" : "⬜";
-            boardStr += " ";
-          }
-          boardStr += "\n";
-        }
-        console.log(boardStr);
+        // console.log("我还是希望你不要作弊！");
+        // console.log("New Game Board Hash:", boardHash);
+        // console.log("Board Visualization:");
+        // let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
+        // for (let y = 0; y < 16; y++) {
+        //   boardStr += y.toString(16) + " ";
+        //   for (let x = 0; x < 16; x++) {
+        //     const hasMine = isMine(boardHash, x, y);
+        //     boardStr += hasMine ? "💣" : "⬜";
+        //     boardStr += " ";
+        //   }
+        //   boardStr += "\n";
+        // }
+        // console.log(boardStr);
 
         setGameState({
           ...INITIAL_BOARD_STATE,
