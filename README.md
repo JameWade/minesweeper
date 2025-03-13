@@ -87,18 +87,16 @@ targetNetworks: [monadTestnet],
 monadTestnet: {
       url: "https://testnet-rpc.monad.xyz",
       accounts: [deployerPrivateKey],
+      chainId: 10143
     },
 ```
 
-然后设置env文件
-```
-touch .env
-```
+然后设置部署账户
 
 ```
-MONAD_TESTNET_RPC_URL=https://testnet-rpc.monad.xyz
-MONAD_TESTNET_PRIVATE_KEY=your_private_key
+yarn account:import
 ```
+
 
 最后部署
 ```
