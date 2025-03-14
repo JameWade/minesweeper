@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { SessionState } from "~~/components/minesweeper/types";
-import { useScaffoldEventHistory, useScaffoldWriteContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
+import { useScaffoldWriteContract, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 
 const SESSION_DURATION = 60 * 60; // 1 hour in seconds, matching contract's SESSION_DURATION
@@ -20,13 +20,6 @@ export const useGameSession = () => {
     contractName: "Minesweeper",
   });
 
-  const { data: sessionEvents } = useScaffoldEventHistory({
-    contractName: "Minesweeper",
-    eventName: "SessionCreated",
-    fromBlock: 0n,
-    filters: { player: address },
-    watch: true,
-  });
 
   const { data: contractSession } = useScaffoldReadContract({
     contractName: "Minesweeper",
@@ -77,19 +70,7 @@ export const useGameSession = () => {
     }
   }, [contractSession]);
 
-  useEffect(() => {
-    const checkExpiry = () => {
-      if (sessionState.isActive && sessionState.expiryTime < Date.now() / 1000) {
-        setSessionState(prev => ({
-          ...prev,
-          isActive: false,
-        }));
-      }
-    };
 
-    const interval = setInterval(checkExpiry, 1000);
-    return () => clearInterval(interval);
-  }, [sessionState.expiryTime, sessionState.isActive]);
 
   const closeSession = useCallback(async () => {
     if (!address) {

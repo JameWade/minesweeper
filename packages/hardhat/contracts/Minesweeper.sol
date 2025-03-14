@@ -32,10 +32,13 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         uint256 revealedMask;
         uint256 startTime;
         bool isOver;
+        bool isStarted;
         uint256 score;
         bytes32 stateHash;
         uint256 moveCount;
-        uint8 mineCount; 
+        uint8 mineCount;
+        uint256 startBlock;  
+        bool hasWon;
     }
 
     struct Session {
@@ -56,7 +59,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     address[] public players;
     mapping(address => bool) public isPlayer;  // 用于快速检查是否已是玩家
 
-    // 事件
+    // 事件  前端已经不用了，都是从game状态直接获取
     event GameStarted(
         address indexed player,
         bytes32 boardHash,
@@ -115,12 +118,15 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         games[msg.sender] = Game({
             boardHash: boardHash,
             revealedMask: 0,
-            startTime: block.timestamp,  // 这里是区块时间戳
+            startTime: block.timestamp,
             isOver: false,
+            isStarted: true,
             score: 0,
             stateHash: boardHash,
             moveCount: 0,
-            mineCount: mineCount
+            mineCount: mineCount,
+            startBlock: block.number,
+            hasWon: false
         });
 
         emit GameStarted(msg.sender, boardHash, mineCount, block.timestamp);
@@ -170,6 +176,8 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
         if (_checkWin(game)) {
             game.isOver = true;
+            game.hasWon = true;
+            game.isStarted = false;  // 重置游戏开始状态
             game.score = _calculateScore(game);
             
             // 更新最高分并添加到玩家列表
@@ -211,6 +219,8 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             return adjacentMines == 0;
         } else {
             game.isOver = true;
+            game.hasWon = false;
+            game.isStarted = false;  // 重置游戏开始状态
             emit GameOver(msg.sender, false, 0, block.timestamp - game.startTime);
             return false;
         }

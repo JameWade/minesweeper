@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useAccount, useWalletClient } from "wagmi";
 import { GameState, Move, SessionState } from "~~/components/minesweeper/types";
-import { useScaffoldEventHistory, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
+import {  useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
-
+import { isMine, getAdjacentMines } from "~~/utils/scaffold-eth";
 const INITIAL_BOARD_STATE: GameState = {
   board: Array(16)
     .fill(null)
@@ -24,7 +24,7 @@ const INITIAL_BOARD_STATE: GameState = {
   startTime: 0,
   stateHash: "",
   score: 0,
-  mineCount: 0 
+  mineCount: 0
 };
 
 export const useGameBoard = ({
@@ -38,40 +38,15 @@ export const useGameBoard = ({
   const [pendingMoves, setPendingMoves] = useState<Move[]>([]);
   const [isProcessingMoves, setIsProcessingMoves] = useState(false);
   const [gameStartBlock, setGameStartBlock] = useState<bigint>(0n);
-
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { writeContractAsync } = useScaffoldWriteContract({
     contractName: "Minesweeper",
   });
 
-  const { data: gameStartEvents } = useScaffoldEventHistory({
+  const { data: currentGame } = useScaffoldReadContract({
     contractName: "Minesweeper",
-    eventName: "GameStarted",
-    fromBlock: gameStartBlock,
-    filters: { player: address },
-    watch: true,
-  });
-
-  const { data: cellRevealedEvents } = useScaffoldEventHistory({
-    contractName: "Minesweeper",
-    eventName: "CellRevealed",
-    fromBlock: gameStartBlock,
-    filters: { player: address },
-    watch: true,
-  });
-
-  const { data: gameOverEvents } = useScaffoldEventHistory({
-    contractName: "Minesweeper",
-    eventName: "GameOver",
-    fromBlock: gameStartBlock,
-    filters: { player: address },
-    watch: true,
-  });
-
-  const { data: contractSession } = useScaffoldReadContract({
-    contractName: "Minesweeper",
-    functionName: "sessions",
+    functionName: "games",
     args: [address],
   });
 
@@ -83,8 +58,6 @@ export const useGameBoard = ({
       }
 
       try {
-        
-
         await writeContractAsync({
           functionName: "startNewGame",
           args: [salt as `0x${string}`],
@@ -202,19 +175,11 @@ export const useGameBoard = ({
 
     setIsProcessingMoves(true);
     try {
-      // 1. 获取最新的 session 状态
-      if (!contractSession) {
-        throw new Error("Failed to read session state");
+      // 使用传入的 sessionState
+      const { nonce, lastHash } = sessionState;
+      if (!nonce || !lastHash) {
+        throw new Error("Invalid session state");
       }
-
-      const [player, expiryTime, nonce, lastHash, lastActionTime,] = contractSession;
-
-      // 2. 更新本地 session 状态
-      setSessionState({
-        ...sessionState,
-        nonce,
-        lastHash,
-      });
 
       // 2. 准备移动数据
       const moves = pendingMoves.slice(0, 20);
@@ -232,105 +197,92 @@ export const useGameBoard = ({
     } finally {
       setIsProcessingMoves(false);
     }
-  }, [writeContractAsync, address, walletClient, pendingMoves, contractSession, setSessionState, sessionState]);
+  }, [writeContractAsync, address, walletClient, pendingMoves, sessionState]);
 
-  const isMine = (boardHash: string, x: number, y: number): boolean => {
-    const positionHash = ethers.solidityPackedKeccak256(["bytes32", "uint8", "uint8"], [boardHash, x, y]);
 
-    const hashValue = BigInt(positionHash);
-    const maxMinePositions = BigInt(16 * 16);
-
-    return hashValue % maxMinePositions < BigInt(40);
-  };
 
   const handleGameStart = useCallback(
-    (event: any) => {
-      if (!event?.args) return;
+    (currentGame: any) => {
+      const [boardHash, revealedMask, startTime, isOver, isStarted, score, stateHash, moveCount, mineCount, startBlock] = currentGame;
+      setGameStartBlock(startBlock);
 
-      const { player, boardHash, mineCount, timestamp } = event.args;
-      if (player.toLowerCase() === address?.toLowerCase()) {
-        setGameStartBlock(event.blockNumber);
-        // 重置游戏状态
-        setGameState(INITIAL_BOARD_STATE);
-        setPendingMoves([]);
+      const newBoard = Array(16)
+        .fill(null)
+        .map(() =>
+          Array(16)
+            .fill(null)
+            .map(() => ({
+              isMine: false,
+              isRevealed: false,
+              isFlagged: false,
+              adjacentMines: 0,
+            })),
+        );
 
-        const newBoard = Array(16)
-          .fill(null)
-          .map(() =>
-            Array(16)
-              .fill(null)
-              .map(() => ({
-                isMine: false,
-                isRevealed: false,
-                isFlagged: false,
-                adjacentMines: 0,
-              })),
-          );
-
-        // 打印雷阵可视化，使用本地实现的 isMine 函数
-        // console.log("我还是希望你不要作弊！");
-        // console.log("New Game Board Hash:", boardHash);
-        // console.log("Board Visualization:");
-        // let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
-        // for (let y = 0; y < 16; y++) {
-        //   boardStr += y.toString(16) + " ";
-        //   for (let x = 0; x < 16; x++) {
-        //     const hasMine = isMine(boardHash, x, y);
-        //     boardStr += hasMine ? "💣" : "⬜";
-        //     boardStr += " ";
-        //   }
-        //   boardStr += "\n";
-        // }
-        // console.log(boardStr);
-
-        setGameState({
-          ...INITIAL_BOARD_STATE,
-          board: newBoard,
-          startTime: Number(timestamp),
-          stateHash: boardHash,
-          mineCount: mineCount,  
-        });
+      // 打印雷阵可视化，使用本地实现的 isMine 函数
+      console.log("我还是希望你不要作弊！");
+      console.log("New Game Board Hash:", boardHash);
+      console.log("Board Visualization:");
+      let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
+      for (let y = 0; y < 16; y++) {
+        boardStr += y.toString(16) + " ";
+        for (let x = 0; x < 16; x++) {
+          const hasMine = isMine(boardHash, x, y);
+          boardStr += hasMine ? "💣" : "⬜";
+          boardStr += " ";
+        }
+        boardStr += "\n";
       }
+      console.log(boardStr);
+      setGameState({
+        ...INITIAL_BOARD_STATE,
+        board: newBoard,
+        startTime: Number(startTime),
+        stateHash: stateHash,
+        mineCount: mineCount,
+      });
     },
-    [address],
+    [address, setGameState]
   );
 
-  const handleCellRevealed = useCallback(
-    (event: any) => {
-      if (!event?.args) return;
 
-      const { player, x, y, adjacentMines, stateHash } = event.args;
-
-      if (player.toLowerCase() === address?.toLowerCase()) {
-        setGameState(prev => {
-          const newBoard = [...prev.board];
-          newBoard[y][x] = {
-            isMine: false,
-            isRevealed: true,
-            isFlagged: false,
-            adjacentMines,
-          };
-          return {
-            ...prev,
-            board: newBoard,
-          };
-        });
-      }
+  const handleGameStatus = useCallback(
+    (currentGame: any) => {
+      const [boardHash, revealedMask, startTime, isOver, isStarted, score, stateHash, moveCount, mineCount, startBlock] = currentGame;
+      // 根据 revealedMask 更新已揭示的格子
+      setGameState(prev => {
+        const newBoard = [...prev.board];
+        let mask = BigInt(revealedMask);
+        for (let y = 0; y < 16; y++) {
+          for (let x = 0; x < 16; x++) {
+            const bitIndex = y * 16 + x;
+            if ((mask >> BigInt(bitIndex)) & 1n) {
+              newBoard[y][x].isRevealed = true;
+              newBoard[y][x].adjacentMines =  getAdjacentMines(boardHash, x, y);
+            }
+          }
+        }
+        return {
+          ...prev,
+          board: newBoard,
+          moveCount: Number(moveCount),
+          stateHash: stateHash,
+          mineCount: mineCount,
+          startTime: Number(startTime),
+          score: Number(score),
+        };
+      });
     },
-    [address],
+    [address,setGameState]
   );
 
   const handleGameOver = useCallback(
-    (event: any) => {
-      if (!event?.args) return;
-
-      const { player, won, score, timeSpent } = event.args;
-      if (player.toLowerCase() === address?.toLowerCase()) {
-
+    (currentGame: any) => {
+      const [boardHash, revealedMask, startTime, isOver, isStarted, score, stateHash, moveCount, mineCount, startBlock, hasWon] = currentGame;
         setGameState(prev => {
           const newBoard = prev.board.map((row, y) =>
             row.map((cell, x) => {
-              const hasMine = isMine(prev.stateHash, x, y);
+              const hasMine = isMine(boardHash, x, y);
               return {
                 ...cell,
                 isMine: hasMine,
@@ -343,37 +295,36 @@ export const useGameBoard = ({
             ...prev,
             board: newBoard,
             isOver: true,
-            hasWon: won,
+            hasWon: hasWon,
             score: Number(score),
           };
         });
-      }
+      
     },
     [address],
   );
 
-  useEffect(() => {
-    if (gameStartEvents?.[0]?.args) {
-      handleGameStart(gameStartEvents[0]);
-    }
-  }, [gameStartEvents, handleGameStart]);
+ 
+
 
   useEffect(() => {
-    cellRevealedEvents?.forEach(handleCellRevealed);
-  }, [cellRevealedEvents, handleCellRevealed]);
-
-  useEffect(() => {
-    if (gameOverEvents?.[0]?.args) {
-      handleGameOver(gameOverEvents[0]);
+    if (currentGame) {
+      const [boardHash, revealedMask, startTime, isOver, isStarted, score, stateHash, moveCount, mineCount, startBlock, hasWon] = currentGame;
+    
+      if (isStarted && !isOver) {
+        if (revealedMask === 0n) {
+          handleGameStart(currentGame);
+        } else {
+          handleGameStatus(currentGame);
+        }
+      } else if (isOver) {
+        handleGameOver(currentGame);
+      } else {
+        setGameState(INITIAL_BOARD_STATE);
+        setPendingMoves([]);
+      }
     }
-  }, [gameOverEvents, handleGameOver]);
-
-  useEffect(() => {
-    if (sessionState.expiryTime < Date.now() / 1000) {
-      setGameState(INITIAL_BOARD_STATE);
-      setPendingMoves([]);
-    }
-  }, [sessionState.expiryTime]);
+  }, [currentGame]);
 
   return {
     gameState,

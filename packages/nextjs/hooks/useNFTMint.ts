@@ -99,6 +99,7 @@ export const useNFTMint = () => {
   }, [writeContractAsync, address, uploadToIPFS]);
 
   // 监听铸造资格事件
+  // const { data: mintEligibleEvents } = {data:[]}
   const { data: mintEligibleEvents } = useScaffoldEventHistory({
     contractName: "Minesweeper",
     eventName: "NFTMintEligible",

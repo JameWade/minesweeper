@@ -51,7 +51,7 @@ import { defineChain } from "viem";
 export const monadTestnet = defineChain({
   id: 10143,
   name: "Monad Testnet",
-  nativeCurrency: { name: "TMON", symbol: "TMON", decimals: 18 },
+  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
     default: {
       http: ["https://testnet-rpc.monad.xyz"],
@@ -104,5 +104,7 @@ yarn deploy --network monadTestnet
 ```
 
 
+Minesweeper deployed to: 0xE58e8c58AD2F955973A8195be9992fFFE5aCdC94
 
+MinesweeperNFT deployed to: 0xAFF9E7E5e7582366A9e10F9bf5b72330cDECB58E
 

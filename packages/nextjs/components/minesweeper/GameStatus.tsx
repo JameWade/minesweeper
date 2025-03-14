@@ -44,10 +44,6 @@ export const SessionStatus = ({ sessionState, onCloseSession }: SessionStatusPro
 };
 
 export const GameStatus = ({ gameState, pendingMoves, isProcessingMoves }: GameStatusProps) => {
-  if (!gameState.stateHash) {
-    return null;
-  }
-
   const [gameTime, setGameTime] = useState(0);
 
   useEffect(() => {
@@ -55,14 +51,16 @@ export const GameStatus = ({ gameState, pendingMoves, isProcessingMoves }: GameS
       return;
     }
 
-    setGameTime(Math.max(0, Math.floor(Date.now() / 1000 - gameState.startTime)));
-
     const timer = setInterval(() => {
       setGameTime(Math.max(0, Math.floor(Date.now() / 1000 - gameState.startTime)));
     }, 1000);
 
     return () => clearInterval(timer);
   }, [gameState.startTime]);
+
+  if (!gameState.stateHash) {
+    return null;
+  }
 
   return (
     <div className="stats shadow h-12">
