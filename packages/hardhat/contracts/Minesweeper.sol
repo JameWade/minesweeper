@@ -24,7 +24,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     // 游戏配置
     uint8 public constant WIDTH = 16;
     uint8 public constant HEIGHT = 16;
-    uint256 public constant SESSION_DURATION = 1 hours;
     uint256 public constant MAX_GAS_PER_TX = 500000;
 
     struct Game {
@@ -41,17 +40,8 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         bool hasWon;
     }
 
-    struct Session {
-        address player;
-        uint256 expiryTime;
-        bytes32 nonce;
-        bytes32 lastHash;
-        uint256 lastActionTime;
-    }
-
     // 存储
     mapping(address => Game) public games;
-    mapping(address => Session) public sessions;
     mapping(address => uint256) public playerGames;
     mapping(address => uint256) public highScores;
     
@@ -75,9 +65,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         uint256 moveCount
     );
     event GameOver(address indexed player, bool won, uint256 score, uint256 timeSpent);
-    event SessionCreated(address indexed player, uint256 expiryTime, bytes32 nonce);
     event BatchMoveProcessed(address indexed player, uint256 moveCount, bytes32 stateHash);
-    event SessionClosed(address indexed player);
     event NFTMintEligible(address indexed player, uint256 rank, uint256 score);
 
     // NFT 合约地址
@@ -93,25 +81,8 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         _unpause();
     }
 
-    // 创建游戏会话
-    function createSession() external whenNotPaused {
-        bytes32 nonce = keccak256(abi.encodePacked(msg.sender, block.timestamp, block.number, block.prevrandao));
-        
-        sessions[msg.sender] = Session({
-            player: msg.sender,
-            expiryTime: block.timestamp + SESSION_DURATION,
-            nonce: nonce,
-            lastHash: keccak256(abi.encodePacked(nonce)),
-            lastActionTime: block.timestamp
-        });
-        
-        emit SessionCreated(msg.sender, block.timestamp + SESSION_DURATION, nonce);
-    }
-
     // 开始新游戏
     function startNewGame(bytes32 salt) external whenNotPaused {
-        require(sessions[msg.sender].expiryTime > block.timestamp, "Session expired");
-
         bytes32 boardHash = MinesweeperUtils.generateBoard(salt);
         uint8 mineCount = MinesweeperUtils.countMines(boardHash);
 
@@ -133,8 +104,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     }
 
     function processBatchMoves(Move[] calldata moves) external whenNotPaused nonReentrant {
-        Session storage session = sessions[msg.sender];
-        require(block.timestamp < session.expiryTime, "Session expired");
         require(moves.length > 0, "No moves provided");
         require(moves.length <= 20, "Batch too large");
         
@@ -146,9 +115,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             yCoords[i] = moves[i].y;
         }
 
-        bytes32 messageHash = keccak256(abi.encode(msg.sender, xCoords, yCoords, session.nonce, session.lastHash));
-        
-
+        // bytes32 messageHash = keccak256(abi.encode(msg.sender, xCoords, yCoords));
         //require(MinesweeperUtils.verifySignature(messageHash, signature, msg.sender), "Invalid signature");
 
         Game storage game = games[msg.sender];
@@ -158,10 +125,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
             _executeMove(msg.sender, moves[i].x, moves[i].y);
             if (game.isOver) break;
         }
-
-        
-        session.lastHash = messageHash;
-        session.lastActionTime = block.timestamp;
 
         emit BatchMoveProcessed(msg.sender, game.moveCount, game.stateHash);
     }
@@ -307,32 +270,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
     receive() external payable {
         require(msg.sender == owner(), "Only owner can send ETH directly");
-    }
-
-    function getSession(address player) external view returns (
-        address sessionPlayer,
-        uint256 expiryTime,
-        bytes32 nonce,
-        bytes32 lastHash,
-        uint256 lastActionTime
-    ) {
-        Session storage session = sessions[player];
-        return (
-            session.player,
-            session.expiryTime,
-            session.nonce,
-            session.lastHash,
-            session.lastActionTime
-        );
-    }
-
-    function closeSession() external nonReentrant whenNotPaused {
-        Session storage session = sessions[msg.sender];
-        require(session.expiryTime > 0, "No active session");
-        
-        delete sessions[msg.sender];
-        
-        emit SessionClosed(msg.sender);
     }
 
     function getPlayers() external view returns (address[] memory) {

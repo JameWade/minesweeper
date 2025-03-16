@@ -1,11 +1,9 @@
 "use client";
 import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
 import React from "react";
-import { SessionStatus } from "~~/components/minesweeper/GameStatus";
 import { useMinesweeper } from "~~/hooks/useMinesweeper";
 
 export const Header = () => {
-  const { sessionState, createSession, closeSession } = useMinesweeper();
 
   return (
     <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 flex-shrink-0 justify-between z-20 shadow-md shadow-secondary px-0 sm:px-2">
@@ -14,15 +12,7 @@ export const Header = () => {
           Minesweeper
         </h1>
       </div>
-      <div className="navbar-center">
-        {!sessionState?.isActive ? (
-          <button className="btn btn-primary btn-sm" onClick={() => createSession()}>
-            Start Session
-          </button>
-        ) : (
-          <SessionStatus sessionState={sessionState} onCloseSession={closeSession} />
-        )}
-      </div>
+     
       <div className="navbar-end">
         <RainbowKitCustomConnectButton />
         <FaucetButton />

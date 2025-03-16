@@ -4,7 +4,7 @@ import { NFTMintStatus } from "~~/components/minesweeper/types";
 import { useScaffoldEventHistory, useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 
-export const useNFTMint = () => {
+export const useNFTMint = ({ leaderboardEntries }: { leaderboardEntries: { address: string; score: number }[] }) => {
   const { address } = useAccount();
   const [tokenURI, setTokenURI] = useState<string>("");
   const [mintStatus, setMintStatus] = useState<NFTMintStatus>({
@@ -20,6 +20,7 @@ export const useNFTMint = () => {
     contractName: "MinesweeperNFT",
     functionName: "canMint",
     args: [address],
+    watch: false,
   });
 
   // 读取是否已经铸造过
@@ -27,6 +28,7 @@ export const useNFTMint = () => {
     contractName: "MinesweeperNFT",
     functionName: "hasMinted",
     args: [address],
+    watch: false,
   });
 
   useEffect(() => {
@@ -98,31 +100,6 @@ export const useNFTMint = () => {
     }
   }, [writeContractAsync, address, uploadToIPFS]);
 
-  // 监听铸造资格事件
-  // const { data: mintEligibleEvents } = {data:[]}
-  const { data: mintEligibleEvents } = useScaffoldEventHistory({
-    contractName: "Minesweeper",
-    eventName: "NFTMintEligible",
-    fromBlock: startBlock,
-    filters: { player: address },
-    watch: true,
-  });
-
-  // 处理铸造资格事件
-  useEffect(() => {
-    if (mintEligibleEvents?.[0]?.args) {
-      const { player, rank, score } = mintEligibleEvents[0].args as { player: string; rank: bigint; score: bigint };
-      if (player.toLowerCase() === address?.toLowerCase()) {
-        setMintStatus(prev => ({
-          ...prev,
-          canMint: true,
-          rank: Number(rank),
-          score: Number(score),
-        }));
-      }
-    }
-  }, [mintEligibleEvents, address]);
-
   // 更新状态
   useEffect(() => {
     if (canMint !== undefined && hasMinted !== undefined) {
@@ -133,6 +110,29 @@ export const useNFTMint = () => {
       }));
     }
   }, [canMint, hasMinted]);
+
+  // 从排行榜获取名次和分数
+  useEffect(() => {
+    if (canMint && address) {
+      // 从 NFTMint 组件传入的 leaderboardEntries 中获取排名和分数
+      const playerRank = leaderboardEntries
+        .slice(0, 10)
+        .findIndex(entry => entry.address.toLowerCase() === address?.toLowerCase()) + 1;
+      
+      if (playerRank > 0) {
+        const playerEntry = leaderboardEntries.find(
+          entry => entry.address.toLowerCase() === address?.toLowerCase()
+        );
+        if (playerEntry) {
+          setMintStatus(prev => ({
+            ...prev,
+            rank: playerRank,
+            score: playerEntry.score,
+          }));
+        }
+      }
+    }
+  }, [canMint, address, leaderboardEntries]);
 
   const generateNFTImage = useCallback((canvas: HTMLCanvasElement) => {
       const ctx = canvas.getContext("2d");

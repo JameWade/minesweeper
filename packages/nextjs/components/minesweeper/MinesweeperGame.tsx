@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMinesweeper } from "~~/hooks/useMinesweeper";
 import { getRandomBytes } from "~~/utils/scaffold-eth";
 import { GameBoard } from "./GameBoard";
-import { GameStatus, SessionStatus } from "./GameStatus";
+import { GameStatus } from "./GameStatus";
 import { Leaderboard } from "./Leaderboard";
 import { NFTMint } from "./NFTMint";
 import { notification } from "~~/utils/scaffold-eth";
@@ -10,15 +10,12 @@ import { notification } from "~~/utils/scaffold-eth";
 export const MinesweeperGame = () => {
   const {
     gameState,
-    sessionState,
     pendingMoves,
     isProcessingMoves,
-    createSession,
     startNewGame,
     handleCellClick,
     handleCellRightClick,
     processPendingMoves,
-    closeSession,
     leaderboardEntries,
   } = useMinesweeper();
 
@@ -65,16 +62,6 @@ export const MinesweeperGame = () => {
     }
   }, [gameState.isOver, gameState.hasWon, gameState.score]);
 
-  const isSessionExpired = sessionState.expiryTime < Date.now() / 1000;
-  const isSessionValid = sessionState.isActive && !isSessionExpired;
-
-  if (!isSessionValid) {
-    return (
-      <div className="flex flex-col items-center gap-4">
-        <Leaderboard entries={leaderboardEntries} />
-      </div>
-    );
-  }
 
   return (
     <div className="flex gap-8 justify-center items-start">
@@ -88,7 +75,6 @@ export const MinesweeperGame = () => {
         {gameState.stateHash && (
           <GameBoard
             gameState={gameState}
-            sessionState={sessionState}
             pendingMoves={pendingMoves}
             isProcessingMoves={isProcessingMoves}
             onCellClick={handleCellClick}

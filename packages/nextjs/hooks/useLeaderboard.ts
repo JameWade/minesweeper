@@ -9,6 +9,7 @@ export const useLeaderboard = () => {
   const { data: players } = useScaffoldReadContract({
     contractName: "Minesweeper",
     functionName: "getPlayers",
+    watch: false,
   });
 
   // 获取所有玩家分数
@@ -16,6 +17,7 @@ export const useLeaderboard = () => {
     contractName: "Minesweeper",
     functionName: "getScores",
     args: [players || []],
+    watch: false,
   });
 
   // 更新排行榜

@@ -21,14 +21,6 @@ export interface Move {
   y: number;
 }
 
-export interface SessionState {
-  isActive: boolean;
-  expiryTime: number;
-  nonce: string;
-  lastHash: string;
-  createdAt: number;
-}
-
 export interface LeaderboardEntry {
   address: string;
   score: number;

@@ -6,7 +6,7 @@ import { useAccount } from "wagmi";
 
 export const NFTMint = ({ leaderboardEntries }: { leaderboardEntries: { address: string; score: number }[] }) => {
   const { address } = useAccount();
-  const { mintStatus, mintNFT, generateNFTImage } = useNFTMint();
+  const { mintStatus, mintNFT, generateNFTImage } = useNFTMint({ leaderboardEntries });
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {

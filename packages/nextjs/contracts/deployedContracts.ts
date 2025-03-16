@@ -1495,7 +1495,7 @@ const deployedContracts = {
   },
   31337: {
     Minesweeper: {
-      address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       abi: [
         {
           inputs: [],
@@ -1730,44 +1730,6 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
-              indexed: true,
-              internalType: "address",
-              name: "player",
-              type: "address",
-            },
-          ],
-          name: "SessionClosed",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "player",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "expiryTime",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "nonce",
-              type: "bytes32",
-            },
-          ],
-          name: "SessionCreated",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
               indexed: false,
               internalType: "address",
               name: "account",
@@ -1805,19 +1767,6 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "SESSION_DURATION",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
           name: "WIDTH",
           outputs: [
             {
@@ -1827,20 +1776,6 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "closeSession",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "createSession",
-          outputs: [],
-          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -1939,45 +1874,6 @@ const deployedContracts = {
               internalType: "uint256[]",
               name: "",
               type: "uint256[]",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "player",
-              type: "address",
-            },
-          ],
-          name: "getSession",
-          outputs: [
-            {
-              internalType: "address",
-              name: "sessionPlayer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "expiryTime",
-              type: "uint256",
-            },
-            {
-              internalType: "bytes32",
-              name: "nonce",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "lastHash",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint256",
-              name: "lastActionTime",
-              type: "uint256",
             },
           ],
           stateMutability: "view",
@@ -2141,45 +2037,6 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          name: "sessions",
-          outputs: [
-            {
-              internalType: "address",
-              name: "player",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "expiryTime",
-              type: "uint256",
-            },
-            {
-              internalType: "bytes32",
-              name: "nonce",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "lastHash",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint256",
-              name: "lastActionTime",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
               name: "_nftContract",
               type: "address",
             },
@@ -2242,7 +2099,7 @@ const deployedContracts = {
       },
     },
     MinesweeperNFT: {
-      address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
+      address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
       abi: [
         {
           inputs: [
