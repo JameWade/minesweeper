@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-import "hardhat/console.sol";
+
 library MinesweeperUtils {
     // 添加缺失的常量
     uint8 internal constant WIDTH = 16;
@@ -35,9 +35,7 @@ library MinesweeperUtils {
                 int8 newY = int8(y) + j;
                 
                 if (newX >= 0 && newX < int8(WIDTH) && newY >= 0 && newY < int8(HEIGHT)) {
-                    console.log("Checking adjacent cell - x: %s, y: %s", uint8(newX), uint8(newY));
                     if (isMine(boardHash, uint8(newX), uint8(newY))) {
-                        console.log("Found mine at x: %s, y: %s", uint8(newX), uint8(newY));
                         count++;
                     }
                 }

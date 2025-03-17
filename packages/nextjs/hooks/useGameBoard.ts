@@ -5,6 +5,11 @@ import { GameState, Move } from "~~/components/minesweeper/types";
 import {  useScaffoldReadContract, useScaffoldWriteContract,useScaffoldWatchContractEvent } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 import { isMine, getAdjacentMines } from "~~/utils/scaffold-eth";
+import { useWaitForTransactionReceipt } from 'wagmi'
+import { keccak256 } from 'ethers'
+import { Interface } from 'ethers';
+import deployedContracts from "~~/contracts/deployedContracts";
+
 const INITIAL_BOARD_STATE: GameState = {
   board: Array(16)
     .fill(null)
@@ -24,6 +29,7 @@ const INITIAL_BOARD_STATE: GameState = {
   startTime: 0,
   stateHash: "",
   score: 0,
+  boardHash: "",
   mineCount: 0
 };
 
@@ -34,10 +40,17 @@ export const useGameBoard = () => {
   const [gameStartBlock, setGameStartBlock] = useState<bigint>(0n);
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const [txList, setTxList] = useState<{ hash: `0x${string}`; type: string }[]>([]);
+  const [currentTxIndex, setCurrentTxIndex] = useState(0);  // 当前正在等待的交易索引
+
   const { writeContractAsync } = useScaffoldWriteContract({
     contractName: "Minesweeper",
   });
 
+
+  const startNewGameSig = keccak256(
+    ethers.toUtf8Bytes("StartNewGame(address,bytes32,uint8,uint256)")
+  );
   const { data: currentGame } = useScaffoldReadContract({
     contractName: "Minesweeper",
     functionName: "games",
@@ -45,55 +58,32 @@ export const useGameBoard = () => {
     watch: false,
   });
 
-  // game的恢复一开始是用的读取所有log恢复，monad限制了请求数量，后来改成了useScaffoldReadContract的持续监听，还是限制，导致了429
-  //所以考虑换成读取进入时的状态 + watch监听
-  useScaffoldWatchContractEvent({
-    contractName: "Minesweeper",
-    eventName: "CellRevealed",
-    onLogs: logs => {
-      logs.map(log => {
-        handleCellRevealed(log);
-      });
-    },
-  });
+  const iface = new Interface(deployedContracts[10143].Minesweeper.abi);
 
-  useScaffoldWatchContractEvent({
-    contractName: "Minesweeper",
-    eventName: "GameStarted",
-    onLogs: logs => {
-      logs.map(log => {
-        handleGameStartEvent(log);
-      });
-    },
-  });
-
-  useScaffoldWatchContractEvent({
-    contractName: "Minesweeper",
-    eventName: "GameOver",
-    onLogs: logs => {
-      logs.map(log => {
-        handleGameOverEvent(log);
-      });
-    },
-  });
-
-  ///////////////////////
   const handleCellRevealed = useCallback(
     (event: any) => {
-      if (!event?.args) return;
-      const { player, x, y, adjacentMines, stateHash } = event.args;
-      if (player.toLowerCase() === address?.toLowerCase()) {
+      const decodedEvent = {
+        player: event.player,
+        x: Number(event.x),
+        y: Number(event.y),
+        adjacentMines: Number(event.adjacentMines),
+        stateHash: event.stateHash,
+        moveCount: Number(event.moveCount)
+      };
+
+      if (decodedEvent.player.toLowerCase() === address?.toLowerCase()) {
         setGameState(prev => {
           const newBoard = [...prev.board];
-          newBoard[y][x] = {
+          newBoard[decodedEvent.y][decodedEvent.x] = {
             isMine: false,
             isRevealed: true,
             isFlagged: false,
-            adjacentMines,
+            adjacentMines: decodedEvent.adjacentMines,
           };
           return {
             ...prev,
-            stateHash: stateHash,
+            stateHash: decodedEvent.stateHash,
+            boardHash: prev.boardHash,
             board: newBoard,
           };
         });
@@ -101,36 +91,78 @@ export const useGameBoard = () => {
     },
     [address],
   );
+  const { data: receipt, isSuccess } = useWaitForTransactionReceipt({
+    hash: currentTxIndex < txList.length ? txList[currentTxIndex]?.hash : undefined,
+  });
 
+  // 处理交易收据
+  useEffect(() => {
+    if (!isSuccess || !receipt || !txList[currentTxIndex]) return;
 
-  
-  const startNewGame = useCallback(
-    async (salt: string) => {
-      if (!address) {
-        notification.error("Please connect your wallet");
-        return;
+    const tx = txList[currentTxIndex];
+    const processLogs = () => {
+      if (tx.type === "processBatchMoves") {
+        receipt.logs.forEach(log => {
+          const parsedLog = iface.parseLog(log);
+          try {
+            if (parsedLog?.name === "CellRevealed") {
+              const decodedLog = iface.decodeEventLog("CellRevealed", log.data, log.topics);
+              handleCellRevealed(decodedLog);
+            } else if (parsedLog?.name === "GameOver") {
+              const decodedLog = iface.decodeEventLog("GameOver", log.data, log.topics);
+              handleGameOverEvent(decodedLog);
+            }
+          } catch (e) {
+            console.log("Failed to decode log:", e);
+          }
+        });
+      }else if (tx.type === "startNewGame") {
+        receipt.logs.forEach(log => {
+          const parsedLog = iface.parseLog(log);
+          try {
+            if (parsedLog?.name === "GameStarted") {
+              const decodedLog = iface.decodeEventLog("GameStarted", log.data, log.topics);
+              handleGameStartEvent(decodedLog);
+            } 
+          } catch (e) {
+            console.log("Failed to decode log:", e);
+          }
+        });
       }
+    };
 
-      try {
-        const result = await writeContractAsync({
-          functionName: "startNewGame",
-          args: [salt as `0x${string}`],
-          gas: 500000n,
-        },
-        {
-          onSuccess: (data) => console.log("交易成功:", data),
-          onError: (error) => console.error("交易失败:", error),
-          onSettled: () => console.log("交易已完成"),
-        }
-      );
-        notification.success("New game started");
-      } catch (error) {
-        console.error("Failed to start new game:", error);
-        notification.error("Failed to start new game");
-      }
-    },
-    [writeContractAsync, address],
-  );
+    processLogs();
+    setCurrentTxIndex(prev => prev + 1);
+  }, [receipt?.blockNumber, isSuccess, currentTxIndex]);
+
+  // 当所有交易处理完成时重置
+  useEffect(() => {
+    if (currentTxIndex >= txList.length && txList.length > 0) {
+      setTxList([]);
+      setCurrentTxIndex(0);
+    }
+  }, [currentTxIndex, txList]);
+
+  const startNewGame = useCallback(async (salt: string) => {
+    if (!address) {
+      notification.error("Please connect your wallet");
+      return;
+    }
+
+    try {
+      const tx = await writeContractAsync({
+        functionName: "startNewGame",
+        args: [salt as `0x${string}`],
+        gas: 500000n,
+      });
+      
+      setTxList(prev => [...prev, { hash: tx as `0x${string}`, type: "startNewGame" }]);
+      notification.success("New game started");
+    } catch (error) {
+      console.error("Failed to start new game:", error);
+      notification.error("Failed to start new game");
+    }
+  }, [writeContractAsync, address]);
 
   const handleCellClick = useCallback(
     (x: number, y: number) => {
@@ -162,28 +194,9 @@ export const useGameBoard = () => {
     [gameState.board],
   );
 
-  // 移动处理相关函数
-  const signMoves = async (moves: Move[], address: string) => {
-    if (!walletClient) throw new Error("Wallet not connected");
-
-    if (!moves || !Array.isArray(moves)) {
-      throw new Error("Invalid moves array");
-    }
-
-    const xCoords = moves.map(m => {
-      if (typeof m.x !== "number") throw new Error(`Invalid x coordinate: ${m.x}`);
-      return m.x;
-    });
-    const yCoords = moves.map(m => {
-      if (typeof m.y !== "number") throw new Error(`Invalid y coordinate: ${m.y}`);
-      return m.y;
-    });
-
-  };
 
   const sendMovesTransaction = async (moves: Move[]) => {
     try {
-      // 确保 moves 数组格式正确
       const formattedMoves = moves.map(m => ({
         x: Number(m.x),
         y: Number(m.y),
@@ -210,20 +223,10 @@ export const useGameBoard = () => {
 
     setIsProcessingMoves(true);
     try {
-     
-
-      // 2. 准备移动数据
       const moves = pendingMoves.slice(0, 20);
-      // 4. 签名移动
-      await signMoves(moves, address);
-
-      // 5. 发送交易
       const tx = await sendMovesTransaction(moves);
- 
+      setTxList((prev) => [...prev, { hash: tx as `0x${string}`, type: "processBatchMoves" }]);
 
-      console.log("tx", tx);
-
-      // 6. 更新待处理移动
       setPendingMoves(prev => prev.slice(moves.length));
     } catch (error) {
       console.error("Failed to process moves:", error);
@@ -235,10 +238,15 @@ export const useGameBoard = () => {
 
   const handleGameStartEvent = useCallback(
     (event: any) => {
-      if (!event?.args) return;
+      // 转换所有数字类型
+      const decodedEvent = {
+        player: event.player,
+        boardHash: event.boardHash,
+        mineCount: Number(event.mineCount),  
+        timestamp: Number(event.timestamp)    
+      };
 
-      const { player, boardHash, mineCount, timestamp } = event.args;
-      if (player.toLowerCase() !== address?.toLowerCase()) return;  
+      if (decodedEvent.player.toLowerCase() !== address?.toLowerCase()) return;  
 
       // 先创建新棋盘
       const newBoard = Array(16)
@@ -254,30 +262,15 @@ export const useGameBoard = () => {
             })),
         );
 
-        // 打印雷阵可视化，使用本地实现的 isMine 函数
-      // console.log("我还是希望你不要作弊！");
-      // console.log("New Game Board Hash:", boardHash);
-      // console.log("Board Visualization:");
-      // let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
-      // for (let y = 0; y < 16; y++) {
-      //   boardStr += y.toString(16) + " ";
-      //   for (let x = 0; x < 16; x++) {
-      //     const hasMine = isMine(boardHash, x, y);
-      //     boardStr += hasMine ? "💣" : "⬜";
-      //     boardStr += " ";
-      //   }
-      //   boardStr += "\n";
-      // }
-      // console.log(boardStr);
-      // 一次性更新所有状态
       setGameStartBlock(event.blockNumber);
       setPendingMoves([]);
       setGameState({
         ...INITIAL_BOARD_STATE,
         board: newBoard,
-        startTime: Number(timestamp),
-        stateHash: boardHash,
-        mineCount: mineCount,  
+        startTime: decodedEvent.timestamp, 
+        stateHash: decodedEvent.boardHash,
+        boardHash: decodedEvent.boardHash,
+        mineCount: decodedEvent.mineCount,  
       });
     },
     [address],
@@ -301,25 +294,11 @@ export const useGameBoard = () => {
               adjacentMines: 0,
             })),
         );
-
-      // 打印雷阵可视化，使用本地实现的 isMine 函数
-      console.log("我还是希望你不要作弊！");
-      console.log("New Game Board Hash:", boardHash);
-      console.log("Board Visualization:");
-      let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
-      for (let y = 0; y < 16; y++) {
-        boardStr += y.toString(16) + " ";
-        for (let x = 0; x < 16; x++) {
-          const hasMine = isMine(boardHash, x, y);
-          boardStr += hasMine ? "💣" : "⬜";
-          boardStr += " ";
-        }
-        boardStr += "\n";
-      }
-      console.log(boardStr);
+      printBoard(boardHash);
       setGameState({
         ...INITIAL_BOARD_STATE,
         board: newBoard,
+        boardHash: boardHash,
         startTime: Number(startTime),
         stateHash: stateHash,
         mineCount: mineCount,
@@ -345,11 +324,13 @@ export const useGameBoard = () => {
             }
           }
         }
+        printBoard(boardHash);
         return {
           ...prev,
           board: newBoard,
           moveCount: Number(moveCount),
           stateHash: stateHash,
+          boardHash: boardHash,
           mineCount: mineCount,
           startTime: Number(startTime),
           score: Number(score),
@@ -362,9 +343,11 @@ export const useGameBoard = () => {
   const handleGameOver = useCallback(
     (currentGame: any) => {
       const [boardHash, revealedMask, startTime, isOver, isStarted, score, stateHash, moveCount, mineCount, startBlock, hasWon] = currentGame;
+      console.log("hasWon", hasWon);
         setGameState(prev => {
           const newBoard = prev.board.map((row, y) =>
             row.map((cell, x) => {
+              console.log("boardHash", boardHash);
               const hasMine = isMine(boardHash, x, y);
               return {
                 ...cell,
@@ -389,15 +372,18 @@ export const useGameBoard = () => {
 
   const handleGameOverEvent = useCallback(
     (event: any) => {
-      if (!event?.args) return;
+      const decodedEvent = {
+        player: event.player,
+        won: Boolean(event.won),
+        score: Number(event.score),
+        timeSpent: Number(event.timeSpent)
+      };
 
-      const { player, won, score, timeSpent } = event.args;
-      if (player.toLowerCase() === address?.toLowerCase()) {
-
+      if (decodedEvent.player.toLowerCase() === address?.toLowerCase()) {
         setGameState(prev => {
           const newBoard = prev.board.map((row, y) =>
             row.map((cell, x) => {
-              const hasMine = isMine(prev.stateHash, x, y);
+              const hasMine = isMine(prev.boardHash, x, y);
               return {
                 ...cell,
                 isMine: hasMine,
@@ -405,13 +391,12 @@ export const useGameBoard = () => {
               };
             }),
           );
-
           return {
             ...prev,
             board: newBoard,
             isOver: true,
-            hasWon: won,
-            score: Number(score),
+            hasWon: decodedEvent.won,
+            score: decodedEvent.score,
           };
         });
       }
@@ -421,7 +406,6 @@ export const useGameBoard = () => {
   useEffect(() => {
     if (currentGame) {
       const [boardHash, revealedMask, startTime, isOver, isStarted, score, stateHash, moveCount, mineCount, startBlock, hasWon] = currentGame;
-    
       if (isStarted && !isOver) {
         if (revealedMask === 0n) {
           handleGameStartHistory(currentGame);
@@ -437,6 +421,24 @@ export const useGameBoard = () => {
     }
   }, [currentGame]);
 
+  const printBoard = useCallback((boardHash: string) => {
+           // 打印雷阵可视化，使用本地实现的 isMine 函数
+           console.log("我还是希望你不要作弊！");
+           console.log("New Game Board Hash:", boardHash);
+           console.log("Board Visualization:");
+           let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
+           for (let y = 0; y < 16; y++) {
+             boardStr += y.toString(16) + " ";
+             for (let x = 0; x < 16; x++) {
+               const hasMine = isMine(boardHash, x, y);
+               boardStr += hasMine ? "💣" : "⬜";
+               boardStr += " ";
+             }
+             boardStr += "\n";
+           }
+           console.log(boardStr);
+    
+  }, []);
   return {
     gameState,
     setGameState,

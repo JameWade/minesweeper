@@ -1495,7 +1495,7 @@ const deployedContracts = {
   },
   31337: {
     Minesweeper: {
-      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      address: "0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9",
       abi: [
         {
           inputs: [],
@@ -2099,7 +2099,7 @@ const deployedContracts = {
       },
     },
     MinesweeperNFT: {
-      address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+      address: "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8",
       abi: [
         {
           inputs: [

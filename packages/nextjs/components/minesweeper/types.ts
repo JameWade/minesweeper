@@ -7,6 +7,7 @@ export interface Cell {
 
 export interface GameState {
   board: Cell[][];
+  boardHash: string;
   moveCount: number;
   isOver: boolean;
   hasWon: boolean;

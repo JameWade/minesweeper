@@ -72,7 +72,7 @@ export const MinesweeperGame = () => {
           pendingMoves={pendingMoves}
           isProcessingMoves={isProcessingMoves}
         />
-        {gameState.stateHash && (
+        {(
           <GameBoard
             gameState={gameState}
             pendingMoves={pendingMoves}

@@ -19,7 +19,6 @@ export const isMine = (boardHash: string, x: number, y: number): boolean => {
 
   const hashValue = BigInt(positionHash);
   const maxMinePositions = BigInt(16 * 16);
-
   return hashValue % maxMinePositions < BigInt(40);
 };
 

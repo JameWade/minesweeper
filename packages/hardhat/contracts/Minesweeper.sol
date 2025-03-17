@@ -36,7 +36,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         bytes32 stateHash;
         uint256 moveCount;
         uint8 mineCount;
-        uint256 startBlock;  
+        uint256 startBlock;
         bool hasWon;
     }
 
@@ -44,18 +44,12 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     mapping(address => Game) public games;
     mapping(address => uint256) public playerGames;
     mapping(address => uint256) public highScores;
-    
+
     // 新增玩家列表
     address[] public players;
-    mapping(address => bool) public isPlayer;  // 用于快速检查是否已是玩家
+    mapping(address => bool) public isPlayer; // 用于快速检查是否已是玩家
 
-    // 事件  前端已经不用了，都是从game状态直接获取
-    event GameStarted(
-        address indexed player,
-        bytes32 boardHash,
-        uint8 mineCount, 
-        uint256 timestamp
-    );
+    event GameStarted(address indexed player, bytes32 boardHash, uint8 mineCount, uint256 timestamp);
     event CellRevealed(
         address indexed player,
         uint8 x,
@@ -106,7 +100,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     function processBatchMoves(Move[] calldata moves) external whenNotPaused nonReentrant {
         require(moves.length > 0, "No moves provided");
         require(moves.length <= 20, "Batch too large");
-        
 
         uint8[] memory xCoords = new uint8[](moves.length);
         uint8[] memory yCoords = new uint8[](moves.length);
@@ -140,13 +133,13 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         if (_checkWin(game)) {
             game.isOver = true;
             game.hasWon = true;
-            game.isStarted = false;  // 重置游戏开始状态
+            game.isStarted = false; // 重置游戏开始状态
             game.score = _calculateScore(game);
-            
+
             // 更新最高分并添加到玩家列表
             if (game.score > highScores[player]) {
                 highScores[player] = game.score;
-                
+
                 if (!isPlayer[player]) {
                     players.push(player);
                     isPlayer[player] = true;
@@ -154,7 +147,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
                 // 检查并通知 NFT 铸造资格
                 _checkAndNotifyNFT(player, game.score);
             }
-            
+
             emit GameOver(player, true, game.score, block.timestamp - game.startTime);
         }
     }
@@ -183,45 +176,53 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         } else {
             game.isOver = true;
             game.hasWon = false;
-            game.isStarted = false;  // 重置游戏开始状态
+            game.isStarted = false; // 重置游戏开始状态
             emit GameOver(msg.sender, false, 0, block.timestamp - game.startTime);
             return false;
         }
     }
 
     function _checkWin(Game storage game) internal view returns (bool) {
-        uint256 revealedCount = 0;
-        uint256 mask = game.revealedMask;
-        while (mask != 0) {
-            if ((mask & 1) != 0) {
-                revealedCount++;
-            }
-            mask = mask >> 1;
-        }
-        uint256 area = uint256(WIDTH) * uint256(HEIGHT);
-        uint256 targetCount = area - game.mineCount;  
-        return revealedCount == targetCount;
-    }
+    // 将256位的revealedMask分成4个64位部分来处理
+    uint256 x = game.revealedMask;
+
+    // 分别计算4个64位块的汉明重量
+    uint256 count1 = hamming_weight(x & 0xFFFFFFFFFFFFFFFF); // 低64位
+    uint256 count2 = hamming_weight((x >> 64) & 0xFFFFFFFFFFFFFFFF); // 次低64位
+    uint256 count3 = hamming_weight((x >> 128) & 0xFFFFFFFFFFFFFFFF); // 次高64位
+    uint256 count4 = hamming_weight(x >> 192); // 高64位
+
+    uint256 revealedCount = count1 + count2 + count3 + count4;
+
+    console.log("revealedCount", revealedCount);
+    uint256 area = uint256(WIDTH) * uint256(HEIGHT);
+    uint256 targetCount = area - game.mineCount;
+    return revealedCount == targetCount;
+}
+
+function hamming_weight(uint256 x) internal pure returns (uint256) {
+    x = x - ((x >> 1) & 0x5555555555555555);
+    x = (x & 0x3333333333333333) + ((x >> 2) & 0x3333333333333333);
+    x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0f;
+    x = x + (x >> 8);
+    x = x + (x >> 16);
+    x = x + (x >> 32);
+    return x & 0x7f; 
+}
 
     function _revealArea(Game storage game, uint8 x, uint8 y) internal {
         uint256 bitIndex = uint256(y) * WIDTH + uint256(x);
-        console.log("_revealArea called for x: %s, y: %s", x, y);
-        
+
         if ((game.revealedMask & (1 << bitIndex)) != 0) {
-            console.log("Cell already revealed, returning. x: %s, y: %s", x, y);
             return;
         }
 
-        // 揭示当前格子，如果不是空白格子，直接返回
         bool isEmpty = _revealCell(game, x, y);
-        console.log("_revealCell result for x: %s, y: %s, isEmpty: %s", x, y, isEmpty);
-        
+
         if (!isEmpty) {
-            console.log("Not an empty cell, stopping recursion. x: %s, y: %s", x, y);
             return;
         }
 
-        console.log("Starting to check adjacent cells for x: %s, y: %s", x, y);
         // 直接检查相邻格子
         for (int8 i = -1; i <= 1; i++) {
             for (int8 j = -1; j <= 1; j++) {
@@ -237,8 +238,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
                 uint8 newX = i < 0 ? x - uint8(-i) : x + uint8(i);
                 uint8 newY = j < 0 ? y - uint8(-j) : y + uint8(j);
-                
-                console.log("Recursing to adjacent cell x: %s, y: %s", newX, newY);
+
                 _revealArea(game, newX, newY);
             }
         }
@@ -253,16 +253,17 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     // 内部函数：计算得分
     function _calculateScore(Game storage game) internal view returns (uint256) {
         uint256 timeSpent = block.timestamp - game.startTime;
-        
-        uint256 score = 100;  // 基础分
 
-        if (timeSpent < 240) {  // 4分钟内完成
-            score += (240 - timeSpent) * 2;  // 每提前1秒加2分
-        }else if(timeSpent < 300){
-            score += (300 - timeSpent) * 1;  
-        }else if(timeSpent > 300 && timeSpent < 400){
-            score -= (timeSpent - 300) * 1;  // 每晚1秒减1分
-        }else {
+        uint256 score = 100; // 基础分
+
+        if (timeSpent < 240) {
+            // 4分钟内完成
+            score += (240 - timeSpent) * 2; // 每提前1秒加2分
+        } else if (timeSpent < 300) {
+            score += (300 - timeSpent) * 1;
+        } else if (timeSpent > 300 && timeSpent < 400) {
+            score -= (timeSpent - 300) * 1; // 每晚1秒减1分
+        } else {
             score = 0;
         }
         return score;
@@ -275,7 +276,7 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
     function getPlayers() external view returns (address[] memory) {
         return players;
     }
-    
+
     function getScores(address[] calldata _players) external view returns (uint256[] memory) {
         uint256[] memory scores = new uint256[](_players.length);
         for (uint256 i = 0; i < _players.length; i++) {
@@ -289,40 +290,17 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
         nftContract = _nftContract;
     }
 
-    // 检查并通知 NFT 铸造资格
+    // 检查并通知 NFT 铸造资格 // 只需要找到玩家的排名
     function _checkAndNotifyNFT(address player, uint256 score) internal {
-        // 获取前10名的分数
-        uint256[] memory topScores = new uint256[](10);
-        address[] memory topPlayers = new address[](10);
-
+        uint256 rank = 1;
         for (uint256 i = 0; i < players.length; i++) {
-            uint256 playerScore = highScores[players[i]];
-            // 找到合适的插入位置
-            for (uint256 j = 0; j < 10; j++) {
-                if (playerScore > topScores[j]) {
-                    // 移动数组元素
-                    for (uint256 k = 9; k > j; k--) {
-                        topScores[k] = topScores[k-1];
-                        topPlayers[k] = topPlayers[k-1];
-                    }
-                    // 插入新分数
-                    topScores[j] = playerScore;
-                    topPlayers[j] = players[i];
-                    break;
-                }
+            if (highScores[players[i]] > score) {
+                rank++;
             }
         }
-
-        // 检查玩家是否在前10名
-        for (uint256 i = 0; i < 10; i++) {
-            if (topPlayers[i] == player) {
-                // 授予铸造资格并发出事件
-                IMinesweeperNFT(nftContract).grantMintAccess(player);
-                emit NFTMintEligible(player, i + 1, score);
-                break;
-            }
+        if (rank <= 10) {
+            IMinesweeperNFT(nftContract).grantMintAccess(player);
+            emit NFTMintEligible(player, rank, score);
         }
     }
 }
-
-
