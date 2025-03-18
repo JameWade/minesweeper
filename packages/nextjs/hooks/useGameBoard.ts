@@ -343,11 +343,9 @@ export const useGameBoard = () => {
   const handleGameOver = useCallback(
     (currentGame: any) => {
       const [boardHash, revealedMask, startTime, isOver, isStarted, score, stateHash, moveCount, mineCount, startBlock, hasWon] = currentGame;
-      console.log("hasWon", hasWon);
         setGameState(prev => {
           const newBoard = prev.board.map((row, y) =>
             row.map((cell, x) => {
-              console.log("boardHash", boardHash);
               const hasMine = isMine(boardHash, x, y);
               return {
                 ...cell,

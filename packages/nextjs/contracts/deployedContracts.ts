@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   10143: {
     Minesweeper: {
-      address: "0x3940ea9A2193262B1536a5AE44A275E698661e2d",
+      address: "0xBD58A0Bed59C36cb270f3Da308a3b0d5bf36FfFb",
       abi: [
         {
           inputs: [],
@@ -242,44 +242,6 @@ const deployedContracts = {
           anonymous: false,
           inputs: [
             {
-              indexed: true,
-              internalType: "address",
-              name: "player",
-              type: "address",
-            },
-          ],
-          name: "SessionClosed",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "address",
-              name: "player",
-              type: "address",
-            },
-            {
-              indexed: false,
-              internalType: "uint256",
-              name: "expiryTime",
-              type: "uint256",
-            },
-            {
-              indexed: false,
-              internalType: "bytes32",
-              name: "nonce",
-              type: "bytes32",
-            },
-          ],
-          name: "SessionCreated",
-          type: "event",
-        },
-        {
-          anonymous: false,
-          inputs: [
-            {
               indexed: false,
               internalType: "address",
               name: "account",
@@ -317,19 +279,6 @@ const deployedContracts = {
         },
         {
           inputs: [],
-          name: "SESSION_DURATION",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
           name: "WIDTH",
           outputs: [
             {
@@ -339,20 +288,6 @@ const deployedContracts = {
             },
           ],
           stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "closeSession",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [],
-          name: "createSession",
-          outputs: [],
-          stateMutability: "nonpayable",
           type: "function",
         },
         {
@@ -460,45 +395,6 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "address",
-              name: "player",
-              type: "address",
-            },
-          ],
-          name: "getSession",
-          outputs: [
-            {
-              internalType: "address",
-              name: "sessionPlayer",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "expiryTime",
-              type: "uint256",
-            },
-            {
-              internalType: "bytes32",
-              name: "nonce",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "lastHash",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint256",
-              name: "lastActionTime",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
               name: "",
               type: "address",
             },
@@ -582,25 +478,6 @@ const deployedContracts = {
         {
           inputs: [
             {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          name: "playerGames",
-          outputs: [
-            {
-              internalType: "uint256",
-              name: "",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
               internalType: "uint256",
               name: "",
               type: "uint256",
@@ -647,45 +524,6 @@ const deployedContracts = {
           name: "renounceOwnership",
           outputs: [],
           stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "address",
-              name: "",
-              type: "address",
-            },
-          ],
-          name: "sessions",
-          outputs: [
-            {
-              internalType: "address",
-              name: "player",
-              type: "address",
-            },
-            {
-              internalType: "uint256",
-              name: "expiryTime",
-              type: "uint256",
-            },
-            {
-              internalType: "bytes32",
-              name: "nonce",
-              type: "bytes32",
-            },
-            {
-              internalType: "bytes32",
-              name: "lastHash",
-              type: "bytes32",
-            },
-            {
-              internalType: "uint256",
-              name: "lastActionTime",
-              type: "uint256",
-            },
-          ],
-          stateMutability: "view",
           type: "function",
         },
         {
@@ -754,7 +592,7 @@ const deployedContracts = {
       },
     },
     MinesweeperNFT: {
-      address: "0x7Ef554Ac28Be93473eDABfe1C0d07e0D6D6A1116",
+      address: "0x9760947a4AE4eF035E5C73aDE9748d69154e733e",
       abi: [
         {
           inputs: [
@@ -1495,7 +1333,7 @@ const deployedContracts = {
   },
   31337: {
     Minesweeper: {
-      address: "0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9",
+      address: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
       abi: [
         {
           inputs: [],
@@ -2099,7 +1937,7 @@ const deployedContracts = {
       },
     },
     MinesweeperNFT: {
-      address: "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8",
+      address: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
       abi: [
         {
           inputs: [

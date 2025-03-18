@@ -22,6 +22,7 @@ export const useLeaderboard = () => {
 
   // 更新排行榜
   const updateLeaderboard = useCallback(() => {
+    console.log("updateLeaderboard", players, scores);
     if (!players || !scores) return;
 
     const leaderboardEntries: LeaderboardEntry[] = players.map((address, index) => ({

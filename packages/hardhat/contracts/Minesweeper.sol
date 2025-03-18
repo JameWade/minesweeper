@@ -42,7 +42,6 @@ contract Minesweeper is ReentrancyGuard, Pausable, Ownable {
 
     // 存储
     mapping(address => Game) public games;
-    mapping(address => uint256) public playerGames;
     mapping(address => uint256) public highScores;
 
     // 新增玩家列表
@@ -256,15 +255,15 @@ function hamming_weight(uint256 x) internal pure returns (uint256) {
 
         uint256 score = 100; // 基础分
 
-        if (timeSpent < 240) {
-            // 4分钟内完成
-            score += (240 - timeSpent) * 2; // 每提前1秒加2分
-        } else if (timeSpent < 300) {
-            score += (300 - timeSpent) * 1;
-        } else if (timeSpent > 300 && timeSpent < 400) {
-            score -= (timeSpent - 300) * 1; // 每晚1秒减1分
+        if (timeSpent < 300) {
+            // 5分钟内完成
+            score += (300 - timeSpent) * 2; // 每提前1秒加2分
+        } else if (timeSpent < 360) {
+            score += (360 - timeSpent) * 1;
+        } else if (timeSpent > 360 && timeSpent < 458) {
+            score -= (timeSpent - 360) * 1; // 每晚1秒减1分
         } else {
-            score = 0;
+            score = 1;    //最小赋值给1分吧，要是给0分，上不了排行榜。。。
         }
         return score;
     }
