@@ -26,12 +26,12 @@ export const Footer = () => {
                 <Faucet />
             )}
           </div>
-          <SwitchTheme className={`pointer-events-auto ${isLocalNetwork ? "self-end md:self-auto" : ""}`} />
+          {/* <SwitchTheme className={`pointer-events-auto ${isLocalNetwork ? "self-end md:self-auto" : ""}`} /> */}
         </div>
       </div>
       <div className="w-full">
         <div className="text-center text-sm text-gray-500">
-          Built with 🏗 Scaffold-ETH 2
+          Built by zkslr
         </div>
       </div>
     </div>
