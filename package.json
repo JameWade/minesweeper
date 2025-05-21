@@ -57,6 +57,7 @@
     "node": ">=20.18.3"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.2.0"
+    "@openzeppelin/contracts": "^5.2.0",
+    "@privy-io/react-auth": "^2.13.2"
   }
 }

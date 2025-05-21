@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useAccount, useWalletClient } from "wagmi";
 import { GameState, Move } from "~~/components/minesweeper/types";
-import {  useScaffoldReadContract, useScaffoldWriteContract,useScaffoldWatchContractEvent } from "~~/hooks/scaffold-eth";
+import { useScaffoldReadContract, useScaffoldWriteContract, useScaffoldWatchContractEvent } from "~~/hooks/scaffold-eth";
 import { notification } from "~~/utils/scaffold-eth";
 import { isMine, getAdjacentMines } from "~~/utils/scaffold-eth";
 import { useWaitForTransactionReceipt } from 'wagmi'
-import { keccak256 } from 'ethers'
 import { Interface } from 'ethers';
 import deployedContracts from "~~/contracts/deployedContracts";
+import { usePrivyWallet } from "./usePrivyWallet";
 
 const INITIAL_BOARD_STATE: GameState = {
   board: Array(16)
@@ -39,6 +39,7 @@ export const useGameBoard = () => {
   const [isProcessingMoves, setIsProcessingMoves] = useState(false);
   const [gameStartBlock, setGameStartBlock] = useState<bigint>(0n);
   const { address } = useAccount();
+  const wallet = usePrivyWallet();
   const { data: walletClient } = useWalletClient();
   const [txList, setTxList] = useState<{ hash: `0x${string}`; type: string }[]>([]);
   const [currentTxIndex, setCurrentTxIndex] = useState(0);  // 当前正在等待的交易索引
@@ -48,9 +49,6 @@ export const useGameBoard = () => {
   });
 
 
-  const startNewGameSig = keccak256(
-    ethers.toUtf8Bytes("StartNewGame(address,bytes32,uint8,uint256)")
-  );
   const { data: currentGame } = useScaffoldReadContract({
     contractName: "Minesweeper",
     functionName: "games",
@@ -116,14 +114,14 @@ export const useGameBoard = () => {
             console.log("Failed to decode log:", e);
           }
         });
-      }else if (tx.type === "startNewGame") {
+      } else if (tx.type === "startNewGame") {
         receipt.logs.forEach(log => {
           const parsedLog = iface.parseLog(log);
           try {
             if (parsedLog?.name === "GameStarted") {
               const decodedLog = iface.decodeEventLog("GameStarted", log.data, log.topics);
               handleGameStartEvent(decodedLog);
-            } 
+            }
           } catch (e) {
             console.log("Failed to decode log:", e);
           }
@@ -155,7 +153,20 @@ export const useGameBoard = () => {
         args: [salt as `0x${string}`],
         gas: 500000n,
       });
+      // const provider = await wallet?.getEthereumProvider()
+
+      // const tx = await sendTransaction({
+      //   abi: deployedContracts[10143].Minesweeper.abi,
+      //   functionName: "startNewGame",
+      //   args: [salt],
+      //   gas: 500000n,
+      //   from: address as `0x${string}`,
+      //   to: deployedContracts[10143].Minesweeper.address,
+      //   provider: provider,
+      // });
+
       
+
       setTxList(prev => [...prev, { hash: tx as `0x${string}`, type: "startNewGame" }]);
       notification.success("New game started");
     } catch (error) {
@@ -210,7 +221,7 @@ export const useGameBoard = () => {
         functionName: "processBatchMoves",
         args: [formattedMoves],
       });
-     
+
       return tx;
     } catch (error) {
       console.error("Transaction error details:", error);
@@ -242,11 +253,11 @@ export const useGameBoard = () => {
       const decodedEvent = {
         player: event.player,
         boardHash: event.boardHash,
-        mineCount: Number(event.mineCount),  
-        timestamp: Number(event.timestamp)    
+        mineCount: Number(event.mineCount),
+        timestamp: Number(event.timestamp)
       };
 
-      if (decodedEvent.player.toLowerCase() !== address?.toLowerCase()) return;  
+      if (decodedEvent.player.toLowerCase() !== address?.toLowerCase()) return;
 
       // 先创建新棋盘
       const newBoard = Array(16)
@@ -267,10 +278,10 @@ export const useGameBoard = () => {
       setGameState({
         ...INITIAL_BOARD_STATE,
         board: newBoard,
-        startTime: decodedEvent.timestamp, 
+        startTime: decodedEvent.timestamp,
         stateHash: decodedEvent.boardHash,
         boardHash: decodedEvent.boardHash,
-        mineCount: decodedEvent.mineCount,  
+        mineCount: decodedEvent.mineCount,
       });
     },
     [address],
@@ -320,7 +331,7 @@ export const useGameBoard = () => {
             const bitIndex = y * 16 + x;
             if ((mask >> BigInt(bitIndex)) & 1n) {
               newBoard[y][x].isRevealed = true;
-              newBoard[y][x].adjacentMines =  getAdjacentMines(boardHash, x, y);
+              newBoard[y][x].adjacentMines = getAdjacentMines(boardHash, x, y);
             }
           }
         }
@@ -337,33 +348,33 @@ export const useGameBoard = () => {
         };
       });
     },
-    [address,setGameState]
+    [address, setGameState]
   );
 
   const handleGameOver = useCallback(
     (currentGame: any) => {
       const [boardHash, revealedMask, startTime, isOver, isStarted, score, stateHash, moveCount, mineCount, startBlock, hasWon] = currentGame;
-        setGameState(prev => {
-          const newBoard = prev.board.map((row, y) =>
-            row.map((cell, x) => {
-              const hasMine = isMine(boardHash, x, y);
-              return {
-                ...cell,
-                isMine: hasMine,
-                isRevealed: hasMine ? true : cell.isRevealed,
-              };
-            }),
-          );
+      setGameState(prev => {
+        const newBoard = prev.board.map((row, y) =>
+          row.map((cell, x) => {
+            const hasMine = isMine(boardHash, x, y);
+            return {
+              ...cell,
+              isMine: hasMine,
+              isRevealed: hasMine ? true : cell.isRevealed,
+            };
+          }),
+        );
 
-          return {
-            ...prev,
-            board: newBoard,
-            isOver: true,
-            hasWon: hasWon,
-            score: Number(score),
-          };
-        });
-      
+        return {
+          ...prev,
+          board: newBoard,
+          isOver: true,
+          hasWon: hasWon,
+          score: Number(score),
+        };
+      });
+
     },
     [address],
   );
@@ -420,22 +431,22 @@ export const useGameBoard = () => {
   }, [currentGame]);
 
   const printBoard = useCallback((boardHash: string) => {
-           // 打印雷阵可视化，使用本地实现的 isMine 函数
-           console.log("我还是希望你不要作弊！");
-           console.log("New Game Board Hash:", boardHash);
-           console.log("Board Visualization:");
-           let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
-           for (let y = 0; y < 16; y++) {
-             boardStr += y.toString(16) + " ";
-             for (let x = 0; x < 16; x++) {
-               const hasMine = isMine(boardHash, x, y);
-               boardStr += hasMine ? "💣" : "⬜";
-               boardStr += " ";
-             }
-             boardStr += "\n";
-           }
-           console.log(boardStr);
-    
+    // 打印雷阵可视化，使用本地实现的 isMine 函数
+    console.log("我还是希望你不要作弊！");
+    console.log("New Game Board Hash:", boardHash);
+    console.log("Board Visualization:");
+    let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
+    for (let y = 0; y < 16; y++) {
+      boardStr += y.toString(16) + " ";
+      for (let x = 0; x < 16; x++) {
+        const hasMine = isMine(boardHash, x, y);
+        boardStr += hasMine ? "💣" : "⬜";
+        boardStr += " ";
+      }
+      boardStr += "\n";
+    }
+    console.log(boardStr);
+
   }, []);
   return {
     gameState,

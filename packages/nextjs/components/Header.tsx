@@ -1,10 +1,9 @@
 "use client";
-import { FaucetButton, RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
+import { FaucetButton } from "~~/components/scaffold-eth";
+import { PrivyConnectButton } from "~~/components/scaffold-eth/PrivyConnectButton";
 import React from "react";
-import { useMinesweeper } from "~~/hooks/useMinesweeper";
 
 export const Header = () => {
-
   return (
     <div className="sticky lg:static top-0 navbar bg-base-100 min-h-0 flex-shrink-0 justify-between z-20 shadow-md shadow-secondary px-0 sm:px-2">
       <div className="navbar-start">
@@ -14,7 +13,7 @@ export const Header = () => {
       </div>
      
       <div className="navbar-end">
-        <RainbowKitCustomConnectButton />
+        <PrivyConnectButton />
         <FaucetButton />
       </div>
     </div>
