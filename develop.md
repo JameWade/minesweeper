@@ -497,3 +497,7 @@ targetNetworks: [monadTestnet],
 ```
 yarn start
 ```
+
+
+## 集成aa
+去privy开启Disable confirmation modals (react-auth only)，用户就不需要手动确认了
