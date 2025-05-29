@@ -12,7 +12,7 @@ import { useEffect } from 'react';
 import { usePrivyWallet } from "~~/hooks/usePrivyWallet";
 
 export const PrivyConnectButton = () => {
-  const { login, logout, authenticated, user, ready } = usePrivy();
+  const { login, logout, authenticated, user, ready, exportWallet } = usePrivy();
   const networkColor = useNetworkColor();
   const { targetNetwork } = useTargetNetwork();
   const { setActiveWallet } = useSetActiveWallet();
@@ -95,6 +95,11 @@ export const PrivyConnectButton = () => {
             <a href={blockExplorerAddressLink} target="_blank" rel="noopener noreferrer">
               View on Explorer
             </a>
+          </li>
+          <li>
+            <button onClick={exportWallet} disabled={!authenticated}>
+              Export my wallet
+            </button>
           </li>
           <li>
             <button onClick={logout}>Disconnect</button>

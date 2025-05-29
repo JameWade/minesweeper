@@ -85,7 +85,7 @@ export const useTransactor = (_walletClient?: WalletClient): TransactionFunc => 
         <TxnNotification message="Transaction completed successfully!" blockExplorerLink={blockExplorerTxURL} />,
         {
           icon: "🎉",
-          duration: 2000
+          duration: 1000
         },
       );
 
