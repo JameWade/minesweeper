@@ -180,7 +180,13 @@ export const useGameBoard = () => {
       if (gameState.board[y][x].isFlagged) {
         return;
       }
-      setPendingMoves(prev => [...prev, { x, y }]);
+      setPendingMoves(prev => {
+        // 检查是否已存在相同的 x, y
+        if (prev.some(move => move.x === x && move.y === y)) {
+          return prev;
+        }
+        return [...prev, { x, y }];
+      });
     },
     [gameState.board],
   );
