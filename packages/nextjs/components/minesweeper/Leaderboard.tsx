@@ -6,7 +6,7 @@ interface LeaderboardProps {
 }
 
 export const Leaderboard = ({ entries }: LeaderboardProps) => {
-  const PAGE_SIZE = 6;
+  const PAGE_SIZE = 1;
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(entries.length / PAGE_SIZE);
 
