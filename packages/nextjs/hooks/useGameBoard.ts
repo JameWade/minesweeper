@@ -438,20 +438,20 @@ export const useGameBoard = () => {
 
   const printBoard = useCallback((boardHash: string) => {
     // 打印雷阵可视化，使用本地实现的 isMine 函数
-    console.log("我还是希望你不要作弊！");
-    console.log("New Game Board Hash:", boardHash);
-    console.log("Board Visualization:");
-    let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
-    for (let y = 0; y < 16; y++) {
-      boardStr += y.toString(16) + " ";
-      for (let x = 0; x < 16; x++) {
-        const hasMine = isMine(boardHash, x, y);
-        boardStr += hasMine ? "💣" : "⬜";
-        boardStr += " ";
-      }
-      boardStr += "\n";
-    }
-    console.log(boardStr);
+    // console.log("我还是希望你不要作弊！");
+    // console.log("New Game Board Hash:", boardHash);
+    // console.log("Board Visualization:");
+    // let boardStr = "  0 1 2 3 4 5 6 7 8 9 a b c d e f\n";
+    // for (let y = 0; y < 16; y++) {
+    //   boardStr += y.toString(16) + " ";
+    //   for (let x = 0; x < 16; x++) {
+    //     const hasMine = isMine(boardHash, x, y);
+    //     boardStr += hasMine ? "💣" : "⬜";
+    //     boardStr += " ";
+    //   }
+    //   boardStr += "\n";
+    // }
+    // console.log(boardStr);
 
   }, []);
   return {
