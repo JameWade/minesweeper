@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.2.0",
-    "@privy-io/react-auth": "^2.13.2"
+    "@privy-io/react-auth": "^2.13.2",
+    "antd": "^5.25.4"
   }
 }

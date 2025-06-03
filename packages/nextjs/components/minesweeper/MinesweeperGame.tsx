@@ -6,6 +6,7 @@ import { GameStatus } from "./GameStatus";
 import { Leaderboard } from "./Leaderboard";
 import { NFTMint } from "./NFTMint";
 import { notification } from "~~/utils/scaffold-eth";
+import GameTips from "./GameGuide";
 
 export const MinesweeperGame = () => {
   const {
@@ -65,7 +66,10 @@ export const MinesweeperGame = () => {
 
   return (
     <div className="flex gap-8 justify-center items-start">
-      {/* 左侧棋盘 */}
+      {/* 游戏说明 */}
+      <GameTips />
+      
+      {/* 中间棋盘 */}
       <div>
         <GameStatus 
           gameState={gameState}

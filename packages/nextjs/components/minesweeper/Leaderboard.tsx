@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { LeaderboardEntry } from "./types";
+import { ConfigProvider, Pagination, theme } from 'antd';
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
@@ -8,24 +9,12 @@ interface LeaderboardProps {
 export const Leaderboard = ({ entries }: LeaderboardProps) => {
   const PAGE_SIZE = 6;
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(entries.length / PAGE_SIZE);
+  const totalEntries = entries.length;
 
   const paginatedEntries = entries.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
-
-  const handlePrev = () => {
-    setCurrentPage((prev) => Math.max(prev - 1, 1));
-  };
-
-  const handleNext = () => {
-    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-  };
-
-  const handlePageClick = (page: number) => {
-    setCurrentPage(page);
-  };
 
   return (
     <div className="bg-purple-600/20 p-4 rounded-2xl backdrop-blur-sm">
@@ -53,33 +42,31 @@ export const Leaderboard = ({ entries }: LeaderboardProps) => {
             ))}
           </div>
           {/* Pagination Controls */}
-          <div className="flex justify-center items-center gap-2 mt-6">
-            <button
-              onClick={handlePrev}
-              disabled={currentPage === 1}
-              className={`px-3 py-1 rounded-lg font-bold transition-colors ${currentPage === 1 ? 'bg-gray-400/30 text-gray-400 cursor-not-allowed' : 'bg-purple-500/20 text-purple-200 hover:bg-purple-500/40'}`}
+          <div className="flex justify-center mt-6">
+            <ConfigProvider
+              theme={{
+                algorithm: theme.darkAlgorithm,
+                token: {
+                  colorPrimary: '#9333ea',
+                  colorBgContainer: 'rgba(147, 51, 234, 0.1)',
+                  colorText: 'rgb(216, 180, 254)',
+                  colorBorder: 'transparent',
+                  borderRadius: 8,
+                },
+              }}
             >
-              上一页
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => handlePageClick(i + 1)}
-                className={`px-3 py-1 rounded-lg font-bold transition-colors ${currentPage === i + 1 ? 'bg-purple-400 text-white' : 'bg-purple-500/20 text-purple-200 hover:bg-purple-500/40'}`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              onClick={handleNext}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-1 rounded-lg font-bold transition-colors ${currentPage === totalPages ? 'bg-gray-400/30 text-gray-400 cursor-not-allowed' : 'bg-purple-500/20 text-purple-200 hover:bg-purple-500/40'}`}
-            >
-              下一页
-            </button>
+              <Pagination
+                current={currentPage}
+                onChange={setCurrentPage}
+                total={totalEntries}
+                pageSize={PAGE_SIZE}
+                size="small"
+                showSizeChanger={false}
+              />
+            </ConfigProvider>
           </div>
         </>
       )}
     </div>
   );
-}; 
+};
