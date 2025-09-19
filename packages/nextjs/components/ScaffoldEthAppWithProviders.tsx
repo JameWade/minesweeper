@@ -51,7 +51,9 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
       config={{
-        loginMethods: ['email', 'wallet'],
+        loginMethodsAndOrder:{
+          primary: ['email', 'wallet','google', 'privy:cmd8euall0037le0my79qpz42']
+        },
         appearance: {
           theme: isDarkMode ? 'dark' : 'light',
           accentColor: '#2299dd',
