@@ -13,7 +13,6 @@ import { useInitializeNativeCurrencyPrice } from "~~/hooks/scaffold-eth";
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 import { mainnet, monadTestnet } from "viem/chains";
 import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
-import { usePrivyWallet } from "~~/hooks/usePrivyWallet";
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   useInitializeNativeCurrencyPrice();
@@ -58,13 +57,8 @@ export const ScaffoldEthAppWithProviders = ({ children }: { children: React.Reac
           theme: isDarkMode ? 'dark' : 'light',
           accentColor: '#2299dd',
         },
-        embeddedWallets: {
-          createOnLogin: 'all-users',
-        },
         defaultChain: monadTestnet,
         supportedChains: [monadTestnet],
-      
-
       }}
     >
       <SmartWalletsProvider>
